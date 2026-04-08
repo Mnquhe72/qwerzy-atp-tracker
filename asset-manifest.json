@@ -1,0 +1,15 @@
+{
+  "files": {
+    "main.css": "/qwerzy-atp-tracker/static/css/main.e6c13ad2.css",
+    "main.js": "/qwerzy-atp-tracker/static/js/main.0f9a3f1c.js",
+    "static/js/453.945c19e0.chunk.js": "/qwerzy-atp-tracker/static/js/453.945c19e0.chunk.js",
+    "index.html": "/qwerzy-atp-tracker/index.html",
+    "main.e6c13ad2.css.map": "/qwerzy-atp-tracker/static/css/main.e6c13ad2.css.map",
+    "main.0f9a3f1c.js.map": "/qwerzy-atp-tracker/static/js/main.0f9a3f1c.js.map",
+    "453.945c19e0.chunk.js.map": "/qwerzy-atp-tracker/static/js/453.945c19e0.chunk.js.map"
+  },
+  "entrypoints": [
+    "static/css/main.e6c13ad2.css",
+    "static/js/main.0f9a3f1c.js"
+  ]
+}
