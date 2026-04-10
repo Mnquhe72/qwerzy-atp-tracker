@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Workbook Comment Slip</title>
+<style>
+  :root { --blue: #007bff; --blue-dark: #0056b3; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #f4f4f4; margin: 10px; }
+
+  /* --- Upload UI --- */
+  .no-print { text-align: center; margin: 20px 0; }
+  #logo-upload-area {
+    border: 2px dashed #aaa; border-radius: 8px;
+    padding: 16px 24px; display: inline-block;
+    cursor: pointer; color: #555; font-size: 13px;
+    transition: border-color .2s, background .2s;
+    margin-bottom: 12px;
+  }
+  #logo-upload-area:hover { border-color: var(--blue); background: #f0f7ff; }
+  #logo-upload-area.has-logo { border-style: solid; border-color: #28a745; color: #28a745; }
+  #logo-file { display: none; }
+
+  .btn {
+    background: var(--blue); color: #fff; border: none;
+    padding: 10px 25px; border-radius: 4px; cursor: pointer;
+    font-weight: bold; transition: background .2s; font-size: 14px;
+  }
+  .btn:hover { background: var(--blue-dark); }
+  .btn-sm {
+    background: #6c757d; padding: 6px 14px;
+    font-size: 12px; margin-left: 8px;
+  }
+  .btn-sm:hover { background: #545b62; }
+  .tip { font-size: 12px; color: #666; margin-top: 8px; }
+
+  /* --- Slip --- */
+  .slip {
+    max-width: 800px; margin: 20px auto; background: #fff;
+    border: 2px solid #000; padding: 20px;
+    box-shadow: 0 4px 8px rgba(0,0,0,.1);
+  }
+  .header {
+    display: flex; align-items: center; justify-content: center;
+    border-bottom: 2px solid #000; margin-bottom: 15px; padding-bottom: 10px;
+    gap: 16px; flex-direction: column;
+  }
+  #logo-preview {
+    max-height: 70px; max-width: 220px;
+    object-fit: contain; display: none;
+  }
+  .header-text { text-align: center; }
+  h2 { font-size: 16px; margin: 4px 0 0; color: #444; letter-spacing: 1px; }
+
+  table { width: 100%; border-collapse: collapse; margin-bottom: 15px; font-size: 14px; }
+  th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+  th { background: #f8f9fa; }
+  .rh { text-align: center; font-size: 11px; width: 60px; }
+  .cc { text-align: center; }
+
+  input[type="text"], input[type="date"], textarea {
+    width: 100%; border: 1px solid #ccc; padding: 6px; font-family: inherit;
+  }
+  textarea { min-height: 60px; resize: none; margin-top: 5px; }
+  input[type="radio"] { transform: scale(1.5); cursor: pointer; }
+
+  .sigs { display: flex; gap: 20px; margin-top: 20px; }
+  .sig { flex: 1; border-top: 1px solid #000; padding-top: 5px; font-size: 12px; text-align: center; }
+
+  @media print {
+    body { background: #fff; margin: 0; }
+    .no-print { display: none; }
+    .slip { box-shadow: none; margin: 0 auto 20px; }
+    input[type="text"], input[type="date"], textarea { border-color: transparent !important; }
+    input::placeholder, textarea::placeholder { color: transparent; }
+    #logo-preview { display: block !important; }
+  }
+</style>
+</head>
+<body>
+
+<div class="no-print">
+  <div id="logo-upload-area" onclick="document.getElementById('logo-file').click()">
+    <span id="upload-label">📁 Click to upload school logo</span>
+  </div>
+  <button class="btn btn-sm" id="remove-btn" style="display:none" onclick="removeLogo()">✕ Remove</button>
+  <input type="file" id="logo-file" accept="image/*">
+  <br>
+  <button class="btn" onclick="window.print()">🖨️ Print Comment Slip</button>
+  <p class="tip">Tip: Set "Scale" to 50% in Print Settings to fit two slips on one A4 page.</p>
+</div>
+
+<div class="slip">
+  <div class="header">
+    <img id="logo-preview" src="" alt="School Logo">
+    <div class="header-text">
+      <h2>EXERCISE BOOK COMMENT SLIP</h2>
+    </div>
+  </div>
+
+  <table>
+    <tr>
+      <td style="width:15%"><strong>Learner:</strong></td>
+      <td style="width:45%"><input type="text" placeholder="Learner name"></td>
+      <td style="width:10%"><strong>Date:</strong></td>
+      <td><input type="date" id="date"></td>
+    </tr>
+    <tr>
+      <td><strong>Grade:</strong></td>
+      <td><input type="text" placeholder="e.g. 5C"></td>
+      <td><strong>Subject:</strong></td>
+      <td><input type="text" placeholder="e.g. Math"></td>
+    </tr>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Assessment Criteria</th>
+        <th class="rh">Excl.</th>
+        <th class="rh">Good</th>
+        <th class="rh">Fair</th>
+        <th class="rh">Needs Imp.</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Neatness &amp; Presentation</td><td class="cc"><input type="radio" name="r1"></td><td class="cc"><input type="radio" name="r1"></td><td class="cc"><input type="radio" name="r1"></td><td class="cc"><input type="radio" name="r1"></td></tr>
+      <tr><td>Work Completion</td><td class="cc"><input type="radio" name="r2"></td><td class="cc"><input type="radio" name="r2"></td><td class="cc"><input type="radio" name="r2"></td><td class="cc"><input type="radio" name="r2"></td></tr>
+      <tr><td>Accuracy of Content</td><td class="cc"><input type="radio" name="r3"></td><td class="cc"><input type="radio" name="r3"></td><td class="cc"><input type="radio" name="r3"></td><td class="cc"><input type="radio" name="r3"></td></tr>
+      <tr><td>Corrections Completed</td><td class="cc"><input type="radio" name="r4"></td><td class="cc"><input type="radio" name="r4"></td><td class="cc"><input type="radio" name="r4"></td><td class="cc"><input type="radio" name="r4"></td></tr>
+    </tbody>
+  </table>
+
+  <strong>Teacher's Comment:</strong>
+  <textarea placeholder="Write overall feedback here..."></textarea>
+
+  <div class="sigs">
+    <div class="sig">Teacher Signature</div>
+    <div class="sig">Parent Signature</div>
+  </div>
+</div>
+
+<script>
+  document.getElementById('date').valueAsDate = new Date();
+
+  const fileInput = document.getElementById('logo-file');
+  const preview   = document.getElementById('logo-preview');
+  const area      = document.getElementById('logo-upload-area');
+  const label     = document.getElementById('upload-label');
+  const removeBtn = document.getElementById('remove-btn');
+
+  fileInput.addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      preview.src = ev.target.result;
+      preview.style.display = 'block';
+      label.textContent = '✅ ' + file.name;
+      area.classList.add('has-logo');
+      removeBtn.style.display = 'inline-block';
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function removeLogo() {
+    preview.src = '';
+    preview.style.display = 'none';
+    label.textContent = '📁 Click to upload school logo';
+    area.classList.remove('has-logo');
+    removeBtn.style.display = 'none';
+    fileInput.value = '';
+  }
+</script>
+</body>
+</html>
