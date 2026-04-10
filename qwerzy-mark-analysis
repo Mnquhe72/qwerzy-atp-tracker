@@ -1,0 +1,526 @@
+import { useState, useEffect, useRef } from "react";
+
+const IMG_EXTS = new Set(["jpg","jpeg","png","gif","webp"]);
+const ACCEPT   = ".xls,.xlsx,.csv,.txt,.pdf,.jpg,.jpeg,.png,.gif,.webp";
+const LCOLS    = ["#ef4444","#f97316","#eab308","#3b82f6","#06b6d4","#10b981","#8b5cf6"];
+const getLevel = p => p<30?1:p<40?2:p<50?3:p<60?4:p<70?5:p<80?6:7;
+const bc       = r => r>=80?"bg":r>=60?"ba":"br";
+
+const CSS=`
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Fredoka',sans-serif;background:#f0f7ff;color:#1a2744;min-height:100vh}
+.shell{max-width:820px;margin:0 auto;padding:1.5rem 1rem 4rem}
+.qw-head{background:linear-gradient(135deg,#004E89 0%,#0066aa 100%);border-radius:16px;padding:1.25rem 1.5rem;margin-bottom:1.25rem;display:flex;align-items:center;gap:1rem;box-shadow:0 4px 20px rgba(0,78,137,.25)}
+.qw-logo{width:48px;height:48px;background:#FF6B35;border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:'Space Mono',monospace;font-weight:700;font-size:1rem;color:#fff;flex-shrink:0}
+.qw-title{font-size:1.4rem;font-weight:700;color:#fff;line-height:1.1}
+.qw-sub{font-size:.78rem;color:rgba(255,255,255,.7);margin-top:1px}
+.qw-badge{margin-left:auto;background:rgba(255,107,53,.2);border:1px solid rgba(255,107,53,.4);color:#ffb38a;border-radius:8px;padding:3px 10px;font-size:.68rem;font-weight:600;white-space:nowrap}
+.how-box{background:#fff8f0;border:1.5px solid #ffd4b8;border-radius:12px;padding:1rem;margin-bottom:1rem}
+.how-title{font-size:.72rem;font-weight:700;color:#c2410c;text-transform:uppercase;letter-spacing:.06em;margin-bottom:.5rem}
+.how-step{display:flex;gap:8px;align-items:flex-start;margin-bottom:.3rem;font-size:.82rem;color:#7c2d12;line-height:1.4}
+.how-num{background:#FF6B35;color:#fff;border-radius:50%;width:18px;height:18px;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;flex-shrink:0;margin-top:1px}
+.step-label{display:inline-flex;align-items:center;font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 12px;border-radius:100px;color:#fff;background:#004E89;margin-bottom:.5rem}
+.card{background:#fff;border:1.5px solid #dde8f5;border-radius:14px;padding:1.25rem;margin-bottom:.875rem;box-shadow:0 1px 6px rgba(0,78,137,.06)}
+.card-title{font-size:.9rem;font-weight:600;color:#004E89;margin-bottom:.875rem}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:.625rem;margin-bottom:.625rem}
+.row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.625rem;margin-bottom:.625rem}
+.lbl{font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5a7a9d;display:block;margin-bottom:3px}
+input,select{width:100%;height:36px;border:1.5px solid #dde8f5;border-radius:8px;padding:0 10px;font-size:.875rem;font-family:'Fredoka',sans-serif;color:#1a2744;background:#f8fbff;outline:none;transition:border-color .15s}
+input:focus,select:focus{border-color:#FF6B35;background:#fff}
+.tags{display:flex;gap:5px;flex-wrap:wrap;min-height:24px;margin-bottom:6px}
+.tag{display:inline-flex;align-items:center;gap:3px;background:#e8f0fe;color:#1d4ed8;border-radius:100px;padding:2px 9px 2px 11px;font-size:.75rem;font-weight:500}
+.tag button{background:none;border:none;cursor:pointer;color:#1d4ed8;font-size:.85rem;padding:0;line-height:1}
+.add-row{display:flex;gap:5px;margin-top:4px}
+.add-row input{width:80px;height:28px;font-size:.78rem}
+.btn-sm{height:28px;padding:0 10px;border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;border:1.5px solid #dde8f5;background:transparent;color:#5a7a9d;font-family:'Fredoka',sans-serif}
+.btn-sm:hover{border-color:#FF6B35;color:#FF6B35}
+.btn-main{display:inline-flex;align-items:center;gap:7px;border:none;border-radius:10px;padding:0 1.25rem;height:42px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:'Fredoka',sans-serif;color:#fff;transition:opacity .15s,transform .1s}
+.btn-main:active{transform:scale(.98)}
+.btn-main:disabled{opacity:.45;cursor:not-allowed}
+.btn-main.orange{background:#FF6B35}.btn-main.navy{background:#004E89}.btn-main.green{background:#16a34a}
+.action-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:.875rem}
+.drop{border:2px dashed #b3d4f0;border-radius:12px;padding:1.25rem;text-align:center;cursor:pointer;transition:.2s;background:#f8fbff;user-select:none}
+.drop:hover,.drop.over{border-color:#FF6B35;background:#fff5f0}
+.file-item{display:flex;align-items:center;gap:7px;background:#f8fbff;border:1.5px solid #dde8f5;border-radius:8px;padding:5px 9px;font-size:.8rem;margin-top:5px}
+.file-thumb{width:40px;height:40px;object-fit:cover;border-radius:6px;border:1px solid #dde8f5;flex-shrink:0}
+.file-name{flex:1;font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.file-meta{font-size:.7rem;color:#7a9ab8;white-space:nowrap}
+.stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:.875rem}
+.stat-box{background:#f0f7ff;border:1.5px solid #dde8f5;border-radius:10px;padding:.75rem;text-align:center}
+.stat-num{font-family:'Space Mono',monospace;font-size:1.3rem;font-weight:700;line-height:1;margin-bottom:2px}
+.stat-lbl{font-size:.62rem;color:#5a7a9d;text-transform:uppercase;letter-spacing:.05em}
+.lvl-bars{display:flex;gap:3px;align-items:flex-end;height:60px;margin:.5rem 0 .2rem}
+.lvl-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px}
+.lvl-bar{width:100%;border-radius:3px 3px 0 0;min-height:3px}
+.lvl-lbl{font-size:.58rem;color:#5a7a9d}
+.lvl-val{font-size:.62rem;font-weight:600;color:#1a2744}
+.sec-title{font-size:.65rem;font-weight:700;color:#5a7a9d;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.cls-table{width:100%;border-collapse:collapse;font-size:.82rem;margin-bottom:.875rem}
+.cls-table th{text-align:left;font-size:.62rem;text-transform:uppercase;letter-spacing:.06em;color:#5a7a9d;border-bottom:1.5px solid #dde8f5;padding:5px 7px}
+.cls-table td{padding:6px 7px;border-bottom:1px solid #eef3fa}
+.cls-table tr:last-child td{border-bottom:none;font-weight:600;background:#f0f7ff}
+.badge{display:inline-block;padding:2px 7px;border-radius:100px;font-size:.65rem;font-weight:700}
+.bg{background:#dcfce7;color:#15803d}.ba{background:#fef9c3;color:#92400e}.br{background:#fee2e2;color:#991b1b}
+.diag-box{background:#f8fbff;border:1.5px solid #dde8f5;border-radius:10px;padding:.875rem;font-size:.78rem;line-height:1.6;color:#2d4a6b;white-space:pre-wrap;max-height:200px;overflow-y:auto;margin-bottom:.875rem;font-family:'Space Mono',monospace}
+.waiting{background:#fff8f0;border:1.5px solid #ffd4b8;border-radius:12px;padding:1rem;text-align:center;margin-bottom:.875rem}
+.waiting p{font-size:.875rem;color:#c2410c;margin-bottom:.35rem;font-weight:500}
+.waiting small{font-size:.75rem;color:#9a3412}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.pulse{animation:pulse 1.6s ease-in-out infinite}
+.err-box{background:#fef2f2;border:1.5px solid #fca5a5;border-radius:10px;padding:.625rem .875rem;font-size:.8rem;color:#991b1b;margin:.4rem 0}
+.read-status{font-size:.75rem;color:#5a7a9d;font-style:italic;margin-top:.4rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:14px;height:14px;border-radius:50%;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;animation:spin .6s linear infinite;flex-shrink:0}
+`;
+
+const readBuf  = f=>new Promise((r,j)=>{const x=new FileReader();x.onload=e=>r(e.target.result);x.onerror=j;x.readAsArrayBuffer(f);});
+const readText = f=>new Promise((r,j)=>{const x=new FileReader();x.onload=e=>r(e.target.result);x.onerror=j;x.readAsText(f);});
+
+async function extractFileText(file,isImg,isPdf){
+  const ext=file.name.split(".").pop().toLowerCase();
+  if(isImg) return `[IMAGE FILE: ${file.name} — extract all marks visible in this image]`;
+  if(isPdf){
+    try{
+      const buf=await readBuf(file);
+      const pdf=await window.pdfjsLib.getDocument({data:buf}).promise;
+      let text="";
+      for(let p=1;p<=Math.min(pdf.numPages,20);p++){const pg=await pdf.getPage(p);const ct=await pg.getTextContent();text+=ct.items.map(i=>i.str).join(" ")+"\n";}
+      return `=== PDF: ${file.name} ===\n${text.substring(0,14000)}`;
+    }catch(e){return `=== PDF: ${file.name} (error: ${e.message}) ===`;}
+  }
+  if((ext==="xls"||ext==="xlsx")&&window.XLSX){
+    const buf=await readBuf(file);const wb=window.XLSX.read(buf,{type:"array"});
+    let out="";wb.SheetNames.forEach(sn=>{out+=`\n[Sheet: ${sn}]\n`+window.XLSX.utils.sheet_to_csv(wb.Sheets[sn]);});
+    return `=== SPREADSHEET: ${file.name} ===\n${out.substring(0,14000)}`;
+  }
+  return `=== FILE: ${file.name} ===\n${(await readText(file)).substring(0,14000)}`;
+}
+
+function buildDocxBlob(analysis,diagnostics,meta){
+  const{educator,supervisor,subject,grade,term,year,school,circuit,district}=meta;
+  const{computed,totalN,totalPassed,totalFailed,combinedAvg,combinedPassRate,combinedLevels}=analysis;
+  const classStr=computed.map(c=>c.className).join(", ");
+  const E=s=>new TextEncoder().encode(s);
+  // Strip any control characters (0x00–0x1F except tab/newline) that break XML
+  const clean=s=>String(s==null?"":s).replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g,"").replace(/\uFFFD/g,"");
+  const esc=s=>clean(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const cm=v=>Math.round(v*567),TW=cm(17);
+  const run=(t,{bold=false,size=20,italic=false}={})=>`<w:r><w:rPr>${bold?"<w:b/>":""}${italic?"<w:i/>":""}<w:sz w:val="${size}"/><w:szCs w:val="${size}"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr><w:t xml:space="preserve">${esc(t)}</w:t></w:r>`;
+  const para=(t,{bold=false,size=20,align="left",italic=false,sb=0,sa=120}={})=>`<w:p><w:pPr><w:jc w:val="${align}"/><w:spacing w:before="${sb}" w:after="${sa}"/></w:pPr>${run(t,{bold,size,italic})}</w:p>`;
+  const pgBrk=()=>`<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
+  const cell=(t,{bold=false,size=18,shade=null,align="left",w=null,cs=1}={})=>`<w:tc><w:tcPr>${w?`<w:tcW w:w="${w}" w:type="dxa"/>`:""}${cs>1?`<w:gridSpan w:val="${cs}"/>`:""}
+    <w:tcBorders><w:top w:val="single" w:sz="6" w:color="000000"/><w:left w:val="single" w:sz="6" w:color="000000"/><w:bottom w:val="single" w:sz="6" w:color="000000"/><w:right w:val="single" w:sz="6" w:color="000000"/></w:tcBorders>
+    ${shade?`<w:shd w:val="clear" w:color="auto" w:fill="${shade}"/>`:""}
+    <w:vAlign w:val="center"/></w:tcPr><w:p><w:pPr><w:jc w:val="${align}"/><w:spacing w:before="60" w:after="60"/></w:pPr>${run(t,{bold,size})}</w:p></w:tc>`;
+  const hdr=(t,o={})=>cell(t,{bold:true,shade:"D0D0D0",...o});
+  const noCell=i=>`<w:tc><w:tcPr><w:tcBorders><w:top w:val="none" w:sz="0"/><w:left w:val="none" w:sz="0"/><w:bottom w:val="none" w:sz="0"/><w:right w:val="none" w:sz="0"/></w:tcBorders></w:tcPr><w:p><w:pPr><w:spacing w:before="60" w:after="60"/></w:pPr>${i}</w:p></w:tc>`;
+  const tbl=(cws,rows)=>`<w:tbl><w:tblPr><w:tblW w:w="${cws.reduce((a,b)=>a+b,0)}" w:type="dxa"/><w:tblLayout w:type="fixed"/></w:tblPr><w:tblGrid>${cws.map(w=>`<w:gridCol w:w="${w}"/>`).join("")}</w:tblGrid>${rows.join("")}</w:tbl>`;
+  const row=(...cells)=>`<w:tr>${cells.join("")}</w:tr>`;
+  const tW=cm(3.8),nW=cm(1.5),lW=Math.floor((TW-tW-nW)/7);
+  const lvlH=["L1\n0-29%","L2\n30-39%","L3\n40-49%","L4\n50-59%","L5\n60-69%","L6\n70-79%","L7\n80-100%"];
+  const sC=[cm(3.5),cm(2),cm(2.5),cm(2.5),cm(2.5),cm(4)];
+  const dC=[cm(3.2),cm(5),cm(5),cm(3.8)];
+  const siC=[cm(2),cm(4.5),cm(2),cm(4.5),cm(2),cm(2)];
+  const spC=[cm(4),cm(3.2),cm(3.2),cm(2.3),cm(2.3),cm(2)];
+  const lines=diagnostics.split("\n");
+  const ch=[],iv=[];let inC=false,inI=false;
+  lines.forEach(l=>{const t=l.trim();if(/KEY CHALLENGE/i.test(t)){inC=true;inI=false;return;}if(/RECOMMENDED INTERVENTION/i.test(t)){inI=true;inC=false;return;}if(/GENERAL COMMENT|DIAGNOSTIC SUMMARY/i.test(t)){inC=false;inI=false;return;}if(inC&&t.startsWith("-"))ch.push(t.replace(/^-\s*/,""));if(inI&&t.startsWith("-"))iv.push(t.replace(/^-\s*/,""));});
+  const ct=lines.filter(l=>l.trim()&&!/^(KEY|RECOMMENDED|GENERAL|DIAGNOSTIC|-|\d\.)/i.test(l.trim())).slice(0,6).join(" ");
+  const doc=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><w:body>
+${para("ANALYSIS OF LEARNER PERFORMANCE",{bold:true,size:26,align:"center"})}
+${para(`${subject} – Grade ${grade} (${classStr})`,{bold:true,size:22,align:"center"})}
+${para(`${term}, ${year}  |  ${esc(school)}`,{size:20,align:"center",sa:200})}
+${tbl([cm(8.5),cm(8.5)],[row(noCell(run(`Type of Formal Task:  SBA Tasks`,{size:20})),noCell(run(`Educator:  ${esc(educator)}`,{size:20}))),row(noCell(run(`Grade:  ${grade}  (Classes ${classStr})`,{size:20})),noCell(run(`Date Written:  ${term}, ${year}`,{size:20})))])}
+${para("")}${para("1.  STATISTICAL ANALYSIS",{bold:true,size:22,sb:160})}${para("")}
+${tbl(sC,[row(hdr("Class",{w:sC[0]}),hdr("Wrote",{w:sC[1],align:"center"}),hdr("Passed",{w:sC[2],align:"center"}),hdr("Failed",{w:sC[3],align:"center"}),hdr("Pass Rate",{w:sC[4],align:"center"}),hdr("Average",{w:sC[5],align:"center"})),
+...computed.map(c=>row(cell(`Grade ${grade} – Class ${c.className}`,{w:sC[0]}),cell(c.n,{align:"center",w:sC[1]}),cell(c.passed,{align:"center",w:sC[2]}),cell(c.failed,{align:"center",w:sC[3]}),cell(c.passRate+"%",{align:"center",w:sC[4]}),cell(c.avg+"%",{align:"center",w:sC[5]}))),
+...(computed.length>1?[row(cell("COMBINED TOTAL",{bold:true,shade:"E8E8E8",w:sC[0]}),cell(totalN,{bold:true,shade:"E8E8E8",align:"center",w:sC[1]}),cell(totalPassed,{bold:true,shade:"E8E8E8",align:"center",w:sC[2]}),cell(totalFailed,{bold:true,shade:"E8E8E8",align:"center",w:sC[3]}),cell(combinedPassRate+"%",{bold:true,shade:"E8E8E8",align:"center",w:sC[4]}),cell(combinedAvg+"%",{bold:true,shade:"E8E8E8",align:"center",w:sC[5]}))]:[])
+])}
+${para("")}${para("Marks / Performance Level Distribution",{bold:true,size:20})}${para("")}
+${tbl([tW,nW,lW,lW,lW,lW,lW,lW,lW],[row(hdr("Class",{w:tW}),hdr("Total",{w:nW,align:"center"}),...lvlH.map(l=>hdr(l,{w:lW,align:"center"}))),
+...computed.map(c=>row(cell(`Class ${c.className}`,{w:tW}),cell(c.n,{align:"center",w:nW}),...c.levels.map(v=>cell(v,{align:"center",w:lW})))),
+...(computed.length>1?[row(cell("COMBINED",{bold:true,shade:"E8E8E8",w:tW}),cell(totalN,{bold:true,shade:"E8E8E8",align:"center",w:nW}),...combinedLevels.map(v=>cell(v,{bold:true,shade:"E8E8E8",align:"center",w:lW})))]:[])
+])}
+${para("")}${para("2.  DIAGNOSTIC ANALYSIS",{bold:true,size:22,sb:160})}
+${para("(Identify the areas where learners have performed poorly and indicate the reason/s for the poor performance.)",{italic:true,size:18})}${para("")}
+${tbl(dC,[row(hdr("Task / Area",{w:dC[0]}),hdr("Description of Challenges",{w:dC[1]}),hdr("Intervention Measures",{w:dC[2]}),hdr("Time-Frame",{w:dC[3]})),
+...(ch.length>0?ch.map((c,i)=>row(cell(c.split(":")[0]||`Area ${i+1}`,{size:16,w:dC[0]}),cell(c,{size:16,w:dC[1]}),cell(iv[i]||"Targeted support",{size:16,w:dC[2]}),cell("Weeks 1–5, next term",{size:16,w:dC[3]}))):[row(cell("All areas",{size:16,w:dC[0]}),cell("See commentary",{size:16,w:dC[1]}),cell("Refer to SIP",{size:16,w:dC[2]}),cell("Next term",{size:16,w:dC[3]}))])
+])}
+${para("")}${para("Comments:",{bold:true,size:20})}${para(diagnostics,{size:18,sa:200})}${para("")}
+${tbl([cm(5.5),cm(5.5),cm(6)],[row(noCell(run("Signature of Educator: _________________________",{size:18})),noCell(run("Signature of HOD/SMT: __________________________",{size:18})),noCell(run("Date: _____ / _____ / __________",{size:18})))])}
+${pgBrk()}
+${para(esc(school).toUpperCase(),{bold:true,size:28,align:"center"})}
+${para(`Circuit: ${esc(circuit)}  |  District: ${esc(district)}`,{size:18,align:"center",sa:180})}
+${para("SUBJECT IMPROVEMENT PLAN",{bold:true,size:26,align:"center"})}
+${para(`(${term}, ${year} – to be completed and revised after each quarter)`,{italic:true,size:18,align:"center",sa:200})}
+${para("1.  DETAIL",{bold:true,size:20})}${para("")}
+${tbl(siC,[row(hdr("District",{w:siC[0]}),cell(esc(district),{w:siC[1]}),hdr("Circuit",{w:siC[2]}),cell(esc(circuit),{w:siC[3]}),hdr("Grade",{w:siC[4]}),cell(grade,{w:siC[5]})),row(hdr("Subject",{w:siC[0]}),cell(subject,{w:siC[1]}),hdr("Educator",{w:siC[2]}),cell(educator,{w:siC[3]}),hdr("Target",{w:siC[4]}),cell("\u226580% Pass Rate",{w:siC[5]})),row(hdr("School",{w:siC[0]}),cell(esc(school),{w:siC[1]}),hdr("Date",{w:siC[2]}),cell(`${term}, ${year}`,{w:siC[3]}),cell("",{w:siC[4]}),cell("",{w:siC[5]}))])}
+${para("")}${para("2.  DETAILS OF THE SUBJECT IMPROVEMENT PLAN",{bold:true,size:20})}
+${para("(Identify the questions where learners have performed poorly and indicate the reason/s for the poor performance.)",{italic:true,size:18})}${para("")}
+${tbl(spC,[row(hdr("Problematic Topics / Challenges",{w:spC[0]}),hdr("Strategy",{w:spC[1]}),hdr("Resources",{w:spC[2]}),hdr("Time Frame",{w:spC[3]}),hdr("Responsibility",{w:spC[4]}),hdr("Progress",{w:spC[5]})),
+...(ch.length>0?ch:["See diagnostic commentary"]).map((c,i)=>row(cell(c,{size:16,w:spC[0]}),cell(iv[i]||"Targeted support and scaffolding",{size:16,w:spC[1]}),cell("CAPS workbooks, DBE exemplars, prescribed texts",{size:16,w:spC[2]}),cell("Weeks 1–6, next term",{size:16,w:spC[3]}),cell(educator,{size:16,w:spC[4]}),cell("",{size:16,w:spC[5]})))
+])}
+${para("")}${para("3.  General Comments",{bold:true,size:20})}
+${para(`${term} ${year}: ${subject} Grade ${grade} – ${classStr}. Total: ${totalN} learners, ${totalPassed} passed (${combinedPassRate}%), average ${combinedAvg}%.`,{size:18,sa:80})}
+${para(ct,{size:18,sa:200})}
+${para("")}
+${tbl([cm(8.5),cm(8.5)],[row(noCell(`${run(`Educator: ${esc(educator)}`,{size:18})}</w:p><w:p><w:pPr><w:spacing w:before="160" w:after="60"/></w:pPr>${run("Signature: _______________________________",{size:18})}</w:p><w:p><w:pPr><w:spacing w:before="160" w:after="60"/></w:pPr>${run("Date: _____ / _____ / __________",{size:18})}`),noCell(`${run(`HOD / Supervisor: ${esc(supervisor)}`,{size:18})}</w:p><w:p><w:pPr><w:spacing w:before="160" w:after="60"/></w:pPr>${run("Signature: _______________________________",{size:18})}`))])}
+<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="720" w:footer="720" w:gutter="0"/></w:sectPr>
+</w:body></w:document>`;
+  const rX=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>`;
+  const sX=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:rPrDefault></w:docDefaults><w:style w:type="paragraph" w:styleId="Normal"><w:name w:val="Normal"/><w:pPr><w:spacing w:after="120"/></w:pPr></w:style></w:styles>`;
+  const cX=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/><Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/></Types>`;
+  const rR=`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`;
+  function buildZip(files){
+    function crc32(d){
+      const t=new Uint32Array(256);
+      for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?(0xEDB88320^(c>>>1)):(c>>>1);t[n]=c;}
+      let c=0xFFFFFFFF;
+      for(let i=0;i<d.length;i++)c=(c>>>8)^t[(c^d[i])&0xFF];
+      return(c^0xFFFFFFFF)>>>0;
+    }
+    const u16=n=>[(n)&0xFF,(n>>8)&0xFF];
+    const u32=n=>[(n)&0xFF,(n>>8)&0xFF,(n>>16)&0xFF,(n>>24)&0xFF];
+    const entries=[];
+    for(const[nm,data]of files){
+      const nb=new TextEncoder().encode(nm);
+      const c=crc32(data);
+      const sz=data.length;
+      const lh=new Uint8Array([
+        0x50,0x4B,0x03,0x04, // local file header sig
+        0x14,0x00,           // version needed
+        0x00,0x00,           // general purpose flag
+        0x00,0x00,           // compression (stored)
+        0x00,0x00,0x00,0x00, // mod time/date
+        ...u32(c),           // crc32
+        ...u32(sz),          // compressed size
+        ...u32(sz),          // uncompressed size
+        ...u16(nb.length),   // filename length
+        0x00,0x00,           // extra field length
+        ...nb
+      ]);
+      entries.push({nb,c,sz,lh,data});
+    }
+    // Build local headers + data
+    const parts=[];
+    let off=0;
+    const cdEntries=[];
+    for(const e of entries){
+      cdEntries.push({...e,off});
+      parts.push(e.lh,e.data);
+      off+=e.lh.length+e.data.length;
+    }
+    // Central directory
+    const cdParts=[];
+    for(const e of cdEntries){
+      const cd=new Uint8Array([
+        0x50,0x4B,0x01,0x02, // central dir sig
+        0x14,0x00,           // version made by
+        0x14,0x00,           // version needed
+        0x00,0x00,           // general purpose flag
+        0x00,0x00,           // compression
+        0x00,0x00,0x00,0x00, // mod time/date
+        ...u32(e.c),
+        ...u32(e.sz),
+        ...u32(e.sz),
+        ...u16(e.nb.length),
+        0x00,0x00,           // extra field length
+        0x00,0x00,           // file comment length
+        0x00,0x00,           // disk number start
+        0x00,0x00,           // internal attr
+        0x00,0x00,0x00,0x00, // external attr
+        ...u32(e.off),
+        ...e.nb
+      ]);
+      cdParts.push(cd);
+    }
+    const cdSz=cdParts.reduce((a,b)=>a+b.length,0);
+    const cdOff=off;
+    const eocd=new Uint8Array([
+      0x50,0x4B,0x05,0x06,
+      0x00,0x00,0x00,0x00,
+      ...u16(entries.length),
+      ...u16(entries.length),
+      ...u32(cdSz),
+      ...u32(cdOff),
+      0x00,0x00
+    ]);
+    const all=[...parts,...cdParts,eocd];
+    const tot=all.reduce((a,b)=>a+b.length,0);
+    const out=new Uint8Array(tot);
+    let p=0;for(const chunk of all){out.set(chunk,p);p+=chunk.length;}
+    return out;
+  }
+  const z=buildZip([["[Content_Types].xml",E(cX)],["_rels/.rels",E(rR)],["word/document.xml",E(doc)],["word/styles.xml",E(sX)],["word/_rels/document.xml.rels",E(rX)]]);
+  return new Blob([z],{type:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+}
+
+export default function App(){
+  const[educator,setEducator]=useState("");
+  const[supervisor,setSupervisor]=useState("");
+  const[school,setSchool]=useState("");
+  const[circuit,setCircuit]=useState("");
+  const[district,setDistrict]=useState("");
+  const[subject,setSubject]=useState("");
+  const[grade,setGrade]=useState("");
+  const[term,setTerm]=useState("Term 1");
+  const[classes,setClasses]=useState([]);
+  const[classInput,setClassInput]=useState("");
+  const[files,setFiles]=useState([]);
+  const[dragOver,setDragOver]=useState(false);
+  const[readStatus,setReadStatus]=useState("");
+  const[sending,setSending]=useState(false);
+  const[waiting,setWaiting]=useState(false);
+  const[analysis,setAnalysis]=useState(null);
+  const[diagnostics,setDiagnostics]=useState("");
+  const[errMsg,setErrMsg]=useState("");
+  const[promptText,setPromptText]=useState("");
+  const[analyzing,setAnalyzing]=useState(false);
+  const fileRef=useRef();
+
+  useEffect(()=>{
+    const load=src=>new Promise(r=>{if(document.querySelector(`script[src="${src}"]`)){r();return;}const s=document.createElement("script");s.src=src;s.onload=r;document.head.appendChild(s);});
+    load("https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js");
+    load("https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js").then(()=>{if(window.pdfjsLib)window.pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";});
+  },[]);
+
+  useEffect(()=>{
+    (async()=>{try{const s=await window.storage.get("qwz-form");if(!s)return;const d=JSON.parse(s.value);
+      if(d.educator)setEducator(d.educator);
+      if(d.supervisor)setSupervisor(d.supervisor);
+      if(d.school)setSchool(d.school);
+      if(d.circuit)setCircuit(d.circuit);
+      if(d.district)setDistrict(d.district);
+      if(d.subject)setSubject(d.subject);
+      if(d.grade)setGrade(d.grade);
+      if(d.term)setTerm(d.term);
+      if(d.classes)setClasses(d.classes);
+    }catch{}})();
+  },[]);
+
+  const save=async p=>{try{await window.storage.set("qwz-form",JSON.stringify({educator,supervisor,school,circuit,district,subject,grade,term,classes,...p}));}catch{}};
+
+  const addClass=()=>{const v=classInput.trim().toUpperCase();if(v&&!classes.includes(v)){const n=[...classes,v];setClasses(n);save({classes:n});}setClassInput("");};
+  const removeC=c=>{const n=classes.filter(x=>x!==c);setClasses(n);save({classes:n});};
+
+  const addFiles=raw=>setFiles(prev=>{
+    const next=[...prev];
+    for(const f of raw){if(next.find(x=>x.file.name===f.name))continue;const ext=f.name.split(".").pop().toLowerCase();const isImg=IMG_EXTS.has(ext)||(f.type||"").startsWith("image/");const isPdf=ext==="pdf";next.push({file:f,isImg,isPdf,previewUrl:isImg?URL.createObjectURL(f):null});}
+    return next;
+  });
+  const removeFile=i=>setFiles(prev=>{if(prev[i].previewUrl)URL.revokeObjectURL(prev[i].previewUrl);return prev.filter((_,j)=>j!==i);});
+
+  const sendToClaude=async()=>{
+    if(!educator||!subject||!grade){setErrMsg("Please fill in Educator name, Subject and Grade.");return;}
+    if(!files.length){setErrMsg("Please upload at least one file.");return;}
+    setErrMsg("");setSending(true);
+    try{
+      const chunks=[];
+      for(let i=0;i<files.length;i++){setReadStatus(`Reading ${i+1}/${files.length}: ${files[i].file.name}…`);chunks.push(await extractFileText(files[i].file,files[i].isImg,files[i].isPdf));}
+      setReadStatus("");
+      const allText=chunks.join("\n\n").substring(0,28000);
+      const nextTerm=term==="Term 4"?"Term 1 (next year)":`Term ${parseInt(term.split(" ")[1])+1}`;
+      const userPrompt=`ANALYSE THESE MARK SHEETS and respond with ONLY a JSON object (no prose, no markdown fences).
+
+CONTEXT: Subject: ${subject}, Grade: ${grade}, ${term}, Educator: ${educator}, School: ${school||"Not specified"}
+
+FILE DATA:
+${allText}
+
+Required JSON format:
+{
+  "classes": [
+    {
+      "className": "7A",
+      "learners": [{"name":"SURNAME, Firstname","totalPct":72.5}]
+    }
+  ],
+  "diagnostics": "DIAGNOSTIC SUMMARY\\n[3-4 sentences on overall performance]\\n\\nKEY CHALLENGE AREAS\\n- Task: challenge description with learner count\\n- Task: challenge description\\n\\nRECOMMENDED INTERVENTIONS\\n- Task: CAPS-aligned strategy\\n- Task: strategy\\n\\nGENERAL COMMENTS FOR HOD\\n[2-3 sentences for ${nextTerm} targets]"
+}
+
+Rules:
+- totalPct = each learner's overall percentage (0-100), rounded to 1 decimal
+- Calculate from task marks: sum(marks)/sum(maxMarks)×100
+- Assign the class average to any learner with no mark recorded (do not exclude them)
+- Use -1 only for officially absent learners (marked as absent in the source data)
+- Detect class names from file names or data headers
+- For image files: read the mark sheet exactly as visible in the image
+- diagnostics must be a single escaped string with \\n for newlines
+- Reference actual numbers and percentages in diagnostics`;
+      setSending(false);
+      setAnalyzing(true);
+      const res=await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:8000,messages:[{role:"user",content:userPrompt}]})
+      });
+      if(!res.ok){const e=await res.json().catch(()=>({}));throw new Error(`API error ${res.status}: ${e?.error?.message||"unknown"}`);}
+      const d=await res.json();
+      const raw=d.content.filter(b=>b.type==="text").map(b=>b.text).join("");
+      processResponse(raw);
+    }catch(e){
+      setErrMsg("Analysis failed: "+e.message);
+      setSending(false);
+      setAnalyzing(false);
+    }
+  };
+
+  const processResponse=(raw)=>{
+    try{
+      const data=JSON.parse(raw.replace(/^```(?:json)?\s*/i,"").replace(/\s*```\s*$/i,"").trim());
+      const computed=data.classes.map(cls=>{
+        const marks=cls.learners.map(l=>l.totalPct).filter(m=>m>=0);
+        const n=marks.length,passed=marks.filter(m=>m>=50).length,failed=n-passed;
+        const avg=n?+(marks.reduce((a,b)=>a+b,0)/n).toFixed(1):0;
+        const passRate=n?+(passed/n*100).toFixed(1):0;
+        const levels=[1,2,3,4,5,6,7].map(l=>marks.filter(m=>getLevel(m)===l).length);
+        return{className:cls.className,n,passed,failed,avg,passRate,levels};
+      });
+      const tN=computed.reduce((a,c)=>a+c.n,0),tP=computed.reduce((a,c)=>a+c.passed,0),tF=computed.reduce((a,c)=>a+c.failed,0);
+      const cA=tN?+(computed.reduce((a,c)=>a+c.avg*c.n,0)/tN).toFixed(1):0;
+      const cP=tN?+(tP/tN*100).toFixed(1):0;
+      const cL=[0,1,2,3,4,5,6].map(i=>computed.reduce((a,c)=>a+c.levels[i],0));
+      const result={computed,totalN:tN,totalPassed:tP,totalFailed:tF,combinedAvg:cA,combinedPassRate:cP,combinedLevels:cL};
+      const diag=(data.diagnostics||"").replace(/\\n/g,"\n");
+      setAnalysis(result);setDiagnostics(diag);setAnalyzing(false);setWaiting(false);
+      try{window.storage.set("qwz-last",JSON.stringify({analysis:result,diagnostics:diag,meta:{educator,supervisor,school,circuit,district,subject,grade,term,year:new Date().getFullYear()}}));}catch{}
+    }catch(e){setErrMsg("Could not parse response: "+e.message);setAnalyzing(false);}
+  };
+
+  const downloadDocx=()=>{
+    try{
+      const blob=buildDocxBlob(analysis,diagnostics,{educator,supervisor,school,circuit,district,subject,grade,term,year:new Date().getFullYear()});
+      const url=URL.createObjectURL(blob);const a=document.createElement("a");a.href=url;
+      a.download=`Analysis_SIP_${subject.replace(/\s+/g,"_")}_Gr${grade}_${term.replace(/\s+/g,"")}_${new Date().getFullYear()}.docx`;
+      document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);
+    }catch(e){setErrMsg("Download failed: "+e.message);}
+  };
+
+  const reset=()=>{files.forEach(f=>{if(f.previewUrl)URL.revokeObjectURL(f.previewUrl);});setFiles([]);setAnalysis(null);setDiagnostics("");setWaiting(false);setAnalyzing(false);setPromptText("");setErrMsg("");setReadStatus("");};
+  const maxV=analysis?Math.max(...analysis.combinedLevels,1):1;
+  const fi=f=>f.isImg?"🖼":f.isPdf?"📕":"📊";
+
+  return(<>
+    <style>{CSS}</style>
+    <div className="shell">
+      <div className="qw-head">
+        <div className="qw-logo">Qw</div>
+        <div>
+          <div className="qw-title">Qwerzy Mark Analysis Tool</div>
+          <div className="qw-sub">We Play To Learn — {school||"Enter your school name"}</div>
+        </div>
+        <div className="qw-badge">SASAMS Aligned</div>
+      </div>
+      <div className="how-box">
+        <div className="how-title">How to use</div>
+        <div className="how-step"><div className="how-num">1</div><div>Fill in your details and upload mark sheets (spreadsheets, PDFs or photos of mark sheets)</div></div>
+        <div className="how-step"><div className="how-num">2</div><div>Click <strong>Send to Claude for analysis</strong> — the prompt is prepared and copied to your clipboard</div></div>
+        <div className="how-step"><div className="how-num">3</div><div>Paste the prompt into a new Claude chat, wait for the JSON reply, then click <strong>Load Claude's response</strong> and paste it in to download your .docx report</div></div>
+      </div>
+      <div className="step-label">Step 1 — Educator details</div>
+      <div className="card">
+        <div className="card-title">Enter your information</div>
+        <div className="row2">
+          <div><label className="lbl">Educator name</label><input value={educator} onChange={e=>{setEducator(e.target.value);save({educator:e.target.value});}} placeholder="e.g. Ms N. Sokhulu"/></div>
+          <div><label className="lbl">HOD / Supervisor</label><input value={supervisor} onChange={e=>{setSupervisor(e.target.value);save({supervisor:e.target.value});}} placeholder="e.g. Mr T. Dlamini"/></div>
+        </div>
+        <div className="row3">
+          <div><label className="lbl">School name</label><input value={school} onChange={e=>{setSchool(e.target.value);save({school:e.target.value});}} placeholder="e.g. Briardene Primary"/></div>
+          <div><label className="lbl">Circuit</label><input value={circuit} onChange={e=>{setCircuit(e.target.value);save({circuit:e.target.value});}} placeholder="e.g. Durban Central"/></div>
+          <div><label className="lbl">District</label><input value={district} onChange={e=>{setDistrict(e.target.value);save({district:e.target.value});}} placeholder="e.g. eThekwini"/></div>
+        </div>
+        <div className="row3">
+          <div><label className="lbl">Subject</label><input value={subject} onChange={e=>{setSubject(e.target.value);save({subject:e.target.value});}} placeholder="e.g. IsiZulu FAL"/></div>
+          <div><label className="lbl">Grade</label><input value={grade} onChange={e=>{setGrade(e.target.value);save({grade:e.target.value});}} placeholder="e.g. 7"/></div>
+          <div><label className="lbl">Term</label>
+            <select value={term} onChange={e=>{setTerm(e.target.value);save({term:e.target.value});}}>
+              {["Term 1","Term 2","Term 3","Term 4"].map(t=><option key={t}>{t}</option>)}
+            </select>
+          </div>
+        </div>
+        <label className="lbl">Classes <span style={{fontWeight:400,textTransform:"none",letterSpacing:0}}>(optional — auto-detected if blank)</span></label>
+        <div className="tags">{classes.map(c=><span key={c} className="tag">{c}<button onClick={()=>removeC(c)}>×</button></span>)}</div>
+        <div className="add-row">
+          <input value={classInput} onChange={e=>setClassInput(e.target.value.toUpperCase())} onKeyDown={e=>{if(e.key==="Enter"){e.preventDefault();addClass();}}} placeholder="e.g. 7A" maxLength={10}/>
+          <button className="btn-sm" onClick={addClass}>+ Add</button>
+        </div>
+      </div>
+      <div className="step-label">Step 2 — Upload mark sheets</div>
+      <div className="card">
+        <div className="card-title">Upload files <span style={{fontSize:".72rem",fontWeight:400,color:"#5a7a9d"}}>XLS · XLSX · CSV · TXT · PDF · JPG · PNG</span></div>
+        <div className={`drop${dragOver?" over":""}`} onClick={()=>fileRef.current.click()} onDragOver={e=>{e.preventDefault();setDragOver(true);}} onDragLeave={()=>setDragOver(false)} onDrop={e=>{e.preventDefault();setDragOver(false);addFiles(e.dataTransfer.files);}}>
+          <div style={{fontSize:"1.6rem",marginBottom:".3rem"}}>📂</div>
+          <div style={{fontSize:".875rem",color:"#3d5a80"}}>Drop files here or click to browse</div>
+          <div style={{fontSize:".7rem",color:"#5a7a9d",marginTop:3}}>Spreadsheets, PDFs and images all accepted</div>
+          <input ref={fileRef} type="file" multiple accept={ACCEPT} style={{display:"none"}} onChange={e=>addFiles(e.target.files)}/>
+        </div>
+        {files.map((f,i)=>(
+          <div key={i} className="file-item">
+            {f.previewUrl?<img className="file-thumb" src={f.previewUrl} alt=""/>:<span style={{fontSize:"1.1rem",flexShrink:0}}>{fi(f)}</span>}
+            <span className="file-name">{f.file.name}</span>
+            <span className="file-meta">{fi(f)} {f.isImg?"image":f.isPdf?"pdf":"sheet"} · {(f.file.size/1024).toFixed(0)} KB</span>
+            <button className="btn-sm" onClick={()=>removeFile(i)}>Remove</button>
+          </div>
+        ))}
+        {readStatus&&<div className="read-status">{readStatus}</div>}
+      </div>
+      <div className="step-label">Step 3 — Analyse</div>
+      <div className="action-row">
+        <button className="btn-main orange" disabled={sending||analyzing} onClick={sendToClaude}>
+          {sending?<><div className="spinner"/>Reading files…</>:analyzing?<><div className="spinner"/>Analysing…</>:"Send to Claude for analysis"}
+        </button>
+        {(analyzing||analysis)&&<button className="btn-sm" onClick={reset}>Start over</button>}
+      </div>
+      {errMsg&&<div className="err-box"><strong>Error:</strong> {errMsg}</div>}
+      {analyzing&&(
+        <div className="waiting">
+          <p className="pulse">🔍 Analysing mark sheets… please wait</p>
+          <small>This may take 20–40 seconds depending on file size</small>
+        </div>
+      )}
+      {analysis&&(
+        <>
+          <div className="step-label" style={{background:"#16a34a"}}>Results</div>
+          <div className="card">
+            <div className="card-title">Analysis summary</div>
+            <div className="stats-grid">
+              {[{n:analysis.totalN,l:"Learners wrote",c:"#004E89"},{n:analysis.totalPassed,l:"Passed (≥50%)",c:"#16a34a"},{n:analysis.totalFailed,l:"Failed",c:"#dc2626"},{n:analysis.combinedAvg+"%",l:"Average mark",c:"#FF6B35"}].map((s,i)=>(
+                <div key={i} className="stat-box"><div className="stat-num" style={{color:s.c}}>{s.n}</div><div className="stat-lbl">{s.l}</div></div>
+              ))}
+            </div>
+            <div className="sec-title">Overall level distribution</div>
+            <div className="lvl-bars">
+              {analysis.combinedLevels.map((v,i)=>(
+                <div key={i} className="lvl-col">
+                  <div className="lvl-val">{v}</div>
+                  <div className="lvl-bar" style={{height:Math.round(v/maxV*52)+"px",background:LCOLS[i]}}/>
+                  <div className="lvl-lbl">L{i+1}</div>
+                </div>
+              ))}
+            </div>
+            <div className="card-title" style={{marginTop:".875rem"}}>Per-class breakdown</div>
+            <table className="cls-table">
+              <thead><tr><th>Class</th><th>Wrote</th><th>Passed</th><th>Failed</th><th>Pass rate</th><th>Average</th></tr></thead>
+              <tbody>
+                {analysis.computed.map((c,i)=>(
+                  <tr key={i}><td><strong>{c.className}</strong></td><td>{c.n}</td><td>{c.passed}</td><td>{c.failed}</td><td><span className={`badge ${bc(c.passRate)}`}>{c.passRate}%</span></td><td>{c.avg}%</td></tr>
+                ))}
+                {analysis.computed.length>1&&(
+                  <tr><td>Combined</td><td>{analysis.totalN}</td><td>{analysis.totalPassed}</td><td>{analysis.totalFailed}</td><td><span className={`badge ${bc(analysis.combinedPassRate)}`}>{analysis.combinedPassRate}%</span></td><td>{analysis.combinedAvg}%</td></tr>
+                )}
+              </tbody>
+            </table>
+            {diagnostics&&(<><div className="card-title">Diagnostic commentary</div><div className="diag-box">{diagnostics}</div></>)}
+            <div className="action-row">
+              <button className="btn-main green" onClick={downloadDocx}>↓ Download .docx report</button>
+
+              <button className="btn-sm" onClick={reset}>Start over</button>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  </>);
+}
