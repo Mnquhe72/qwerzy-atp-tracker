@@ -1,0 +1,1088 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>IsiZulu FAL – Daily Focus Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+<style>
+:root{--ink:#0f1923;--paper:#faf7f2;--cream:#f3ede3;--green:#1a5276;--green-mid:#1e8449;--green-lt:#d5f5e3;--gold:#c8973a;--gold-lt:#fef3e0;--red:#922b21;--border:#c8bfb0;--shadow:rgba(15,25,35,0.12);}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'DM Sans',sans-serif;background:var(--paper);color:var(--ink);min-height:100vh;}
+/* MODALS */
+.modal-overlay{position:fixed;inset:0;background:rgba(15,25,35,.6);z-index:900;display:flex;align-items:center;justify-content:center;padding:24px;}
+.modal-overlay.hidden{display:none;}
+.modal-card{background:#fff;border-radius:20px;padding:40px;max-width:460px;width:100%;box-shadow:0 12px 48px rgba(15,25,35,.25);}
+.modal-card h2{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:6px;color:var(--green);}
+.modal-card p{font-size:13px;color:#666;margin-bottom:24px;line-height:1.6;}
+.setup-field{margin-bottom:20px;}
+.setup-field label{display:block;font-size:11px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#999;margin-bottom:6px;}
+.setup-field input,.setup-field select{width:100%;padding:10px 14px;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;background:#fafafa;color:var(--ink);transition:.2s;}
+.setup-field input:focus,.setup-field select:focus{border-color:var(--green);background:#fff;}
+.setup-row{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+.modal-btn{width:100%;padding:13px;background:var(--green);color:#fff;border:none;border-radius:10px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;margin-top:8px;}
+.modal-btn:hover{background:var(--green-mid);}
+/* EXPORT GRID */
+.export-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:20px;}
+.exp-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:18px 10px;border:1.5px solid var(--border);border-radius:12px;background:#fafafa;cursor:pointer;font-family:'DM Sans',sans-serif;transition:.2s;text-align:center;}
+.exp-btn:hover{border-color:var(--green);background:var(--green-lt);color:var(--green);}
+.exp-btn .ei{font-size:26px;}
+.exp-btn .el{font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;}
+.exp-btn .es{font-size:10px;color:#888;}
+.exp-cancel{width:100%;padding:10px;background:transparent;border:1.5px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;color:#888;transition:.2s;}
+.exp-cancel:hover{border-color:var(--red);color:var(--red);}
+/* HEADER */
+header{background:var(--green);color:#fff;padding:18px 32px;display:flex;align-items:center;gap:16px;position:sticky;top:0;z-index:100;box-shadow:0 2px 12px var(--shadow);}
+.header-logo{width:44px;height:44px;background:var(--gold);border-radius:10px;display:flex;align-items:center;justify-content:center;font-family:'Playfair Display',serif;font-size:20px;font-weight:900;color:var(--green);flex-shrink:0;}
+header h1{font-family:'Playfair Display',serif;font-size:20px;font-weight:700;}
+header p{font-size:12px;opacity:.75;margin-top:2px;}
+.header-badge{margin-left:auto;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);border-radius:20px;padding:4px 14px;font-size:11px;font-family:'DM Mono',monospace;cursor:pointer;transition:.2s;white-space:nowrap;}
+.header-badge:hover{background:rgba(255,255,255,.25);}
+/* UPLOAD */
+#upload-panel{max-width:680px;margin:60px auto;padding:0 24px;}
+.upload-card{background:#fff;border:2px dashed var(--border);border-radius:20px;padding:52px 40px;text-align:center;transition:.25s;cursor:pointer;}
+.upload-card:hover,.upload-card.drag-over{border-color:var(--green-mid);background:var(--green-lt);}
+.upload-icon{width:72px;height:72px;background:var(--green-lt);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 22px;font-size:32px;}
+.upload-card h2{font-family:'Playfair Display',serif;font-size:24px;margin-bottom:8px;}
+.upload-card p{color:#666;font-size:14px;line-height:1.65;}
+.fmt-strip{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:22px 0 4px;}
+.fmt-badge{padding:5px 16px;border-radius:20px;font-size:11px;font-weight:700;font-family:'DM Mono',monospace;border:1px solid;}
+.fmt-xlsx{background:#e8f8f0;color:#1e8449;border-color:#a8dbbe;}
+.fmt-pdf{background:#fdecea;color:#c0392b;border-color:#f5b7b1;}
+.fmt-docx{background:#eaf0ff;color:#1a5276;border-color:#a9c4e8;}
+.upload-btn{display:inline-block;margin-top:26px;padding:13px 32px;background:var(--green);color:#fff;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;}
+.upload-btn:hover{background:var(--green-mid);}
+#file-input{display:none;}
+/* LOADING */
+#loading{display:none;position:fixed;inset:0;background:rgba(15,25,35,.55);z-index:500;align-items:center;justify-content:center;flex-direction:column;gap:16px;}
+#loading.show{display:flex;}
+.spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loading-msg{color:#fff;font-size:14px;font-weight:500;}
+/* APP */
+#app{display:none;max-width:1100px;margin:0 auto;padding:32px 24px 80px;}
+/* STEPS */
+.steps{display:flex;margin-bottom:38px;background:#fff;border-radius:14px;border:1px solid var(--border);overflow:hidden;}
+.step{flex:1;padding:14px 18px;display:flex;align-items:center;gap:10px;font-size:13px;font-weight:500;color:#888;border-right:1px solid var(--border);transition:.2s;}
+.step:last-child{border-right:none;}
+.step.active{background:var(--green-lt);color:var(--green);}
+.step.done{background:var(--green);color:#fff;}
+.step-num{width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Mono',monospace;font-size:11px;font-weight:600;background:rgba(0,0,0,.1);flex-shrink:0;}
+.step.active .step-num{background:var(--green);color:#fff;}
+.step.done .step-num{background:rgba(255,255,255,.3);color:#fff;}
+.panel{display:none;} .panel.active{display:block;}
+/* TABLE */
+.tracker-bar{display:flex;align-items:center;gap:14px;margin-bottom:18px;flex-wrap:wrap;}
+.tracker-bar h2{font-family:'Playfair Display',serif;font-size:22px;}
+.lesson-count{background:var(--green-lt);color:var(--green);border-radius:20px;padding:4px 14px;font-size:12px;font-family:'DM Mono',monospace;}
+.tracker-search{margin-left:auto;padding:8px 16px;border:1px solid var(--border);border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;width:220px;outline:none;}
+.tracker-search:focus{border-color:var(--green);}
+.src-badge{font-size:11px;font-family:'DM Mono',monospace;padding:3px 10px;border-radius:12px;font-weight:700;border:1px solid;}
+.src-xlsx{background:#e8f8f0;color:#1e8449;border-color:#a8dbbe;}
+.src-pdf{background:#fdecea;color:#c0392b;border-color:#f5b7b1;}
+.src-docx{background:#eaf0ff;color:#1a5276;border-color:#a9c4e8;}
+.warn-banner{background:#fff8e1;border:1px solid #ffe082;border-radius:10px;padding:12px 18px;font-size:13px;color:#7b5a00;margin-bottom:18px;display:none;}
+.warn-banner.show{display:block;}
+.tracker-table-wrap{overflow-x:auto;border-radius:14px;border:1px solid var(--border);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+thead th{background:var(--green);color:#fff;padding:12px 14px;text-align:left;font-weight:600;font-size:12px;white-space:nowrap;}
+tbody tr{border-bottom:1px solid var(--border);transition:.15s;}
+tbody tr:hover{background:var(--cream);}
+tbody tr.week-hdr{background:var(--green-lt);}
+tbody tr.week-hdr td{font-weight:700;color:var(--green);font-size:12px;padding:8px 14px;}
+tbody td{padding:10px 14px;vertical-align:middle;}
+.date-col{font-family:'DM Mono',monospace;font-size:12px;white-space:nowrap;color:var(--green-mid);font-weight:600;}
+.lesson-col{text-align:center;font-family:'DM Mono',monospace;font-size:12px;}
+.select-btn{padding:5px 14px;background:var(--green);color:#fff;border:none;border-radius:6px;font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:600;transition:.2s;white-space:nowrap;}
+.select-btn:hover{background:var(--green-mid);}
+/* FORM */
+.form-topbar{display:flex;align-items:center;gap:16px;margin-bottom:28px;flex-wrap:wrap;}
+.form-topbar h2{font-family:'Playfair Display',serif;font-size:22px;}
+.back-btn{padding:8px 18px;background:var(--cream);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;font-family:'DM Sans',sans-serif;font-weight:500;}
+.back-btn:hover{background:#e8e0d4;}
+.daily-form{background:#fff;border:1.5px solid var(--border);border-radius:18px;overflow:hidden;box-shadow:0 6px 32px var(--shadow);max-width:820px;margin:0 auto;}
+.form-header{background:var(--green);color:#fff;padding:20px 32px;}
+.form-header h3{font-family:'Playfair Display',serif;font-size:22px;}
+.form-header p{font-size:12px;opacity:.75;margin-top:4px;}
+.form-meta{display:grid;grid-template-columns:repeat(3,1fr);border-bottom:2px solid var(--border);}
+.meta-field{padding:14px 20px;border-right:1px solid var(--border);}
+.meta-field:last-child{border-right:none;}
+.meta-label{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#999;margin-bottom:4px;}
+.meta-input{width:100%;border:none;border-bottom:1.5px solid var(--border);padding:4px 0;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:500;outline:none;background:transparent;color:var(--ink);transition:.2s;}
+.meta-input:focus{border-color:var(--green);}
+.form-row{display:grid;grid-template-columns:220px 1fr;border-bottom:1px solid var(--border);}
+.form-row:last-child{border-bottom:none;}
+.row-label{padding:14px 20px;background:var(--cream);border-right:1px solid var(--border);font-weight:700;font-size:12px;display:flex;flex-direction:column;align-items:flex-start;line-height:1.4;}
+.row-label small{display:block;font-weight:400;font-size:10px;color:#888;margin-top:2px;}
+.row-value{padding:12px 18px;display:flex;align-items:flex-start;}
+.row-textarea{width:100%;min-height:56px;border:1px solid var(--border);border-radius:6px;padding:8px 12px;font-family:'DM Sans',sans-serif;font-size:13px;line-height:1.6;resize:vertical;outline:none;background:#fafafa;transition:.2s;color:var(--ink);}
+.row-textarea:focus{border-color:var(--green);background:#fff;}
+.row-textarea.prefilled{background:var(--green-lt);border-color:#a8dbbe;}
+.assess-grid{width:100%;display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.assess-item label{font-size:11px;font-weight:600;color:#666;display:block;margin-bottom:4px;}
+.self-assess-grid{width:100%;display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.sa-item label{font-size:11px;font-weight:600;color:#666;display:block;margin-bottom:4px;}
+.sa-select{width:100%;padding:6px 10px;border:1px solid var(--border);border-radius:6px;font-family:'DM Sans',sans-serif;font-size:13px;background:#fafafa;outline:none;cursor:pointer;}
+.sa-select.prefilled{background:var(--green-lt);border-color:#a8dbbe;}
+.sign-banner{background:var(--green-lt);border:1.5px solid #a8dbbe;border-radius:10px;padding:12px 20px;font-size:13px;color:var(--green);font-weight:600;display:flex;align-items:center;gap:10px;}
+/* SIGNATURES */
+.sig-section{border-top:2px solid var(--green);padding:24px 24px 8px;background:var(--gold-lt);}
+.sig-section-title{font-size:12px;font-weight:700;color:var(--green);margin-bottom:16px;letter-spacing:.03em;text-transform:uppercase;}
+.sig-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px 32px;margin-bottom:16px;}
+.sig-block label{font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888;display:block;margin-bottom:6px;}
+.sig-line{width:100%;border:none;border-bottom:1.5px solid var(--ink);padding:4px 0;font-family:'DM Sans',sans-serif;font-size:14px;background:transparent;outline:none;min-height:32px;}
+.sig-canvas-wrap{border:1px dashed var(--border);border-radius:8px;background:#fff;position:relative;height:80px;overflow:hidden;cursor:crosshair;}
+.sig-canvas-wrap canvas{width:100%;height:100%;display:block;touch-action:none;}
+.sig-clear{position:absolute;top:6px;right:8px;font-size:10px;color:#aaa;cursor:pointer;background:rgba(255,255,255,.8);border:1px solid var(--border);border-radius:4px;padding:2px 8px;font-family:'DM Sans',sans-serif;}
+.sig-clear:hover{color:var(--red);border-color:var(--red);}
+/* ACTIONS */
+.action-bar{display:flex;gap:12px;justify-content:flex-end;padding:20px 24px;border-top:1px solid var(--border);background:var(--cream);flex-wrap:wrap;}
+.btn{padding:11px 26px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:.2s;}
+.btn-gold{background:var(--gold);color:#fff;}
+.btn-gold:hover{opacity:.9;}
+.btn-outline{background:transparent;border:1.5px solid var(--border);color:var(--ink);}
+.btn-outline:hover{border-color:var(--green);color:var(--green);}
+/* TOAST */
+.toast{position:fixed;bottom:32px;left:50%;transform:translateX(-50%) translateY(60px);background:var(--green);color:#fff;padding:12px 28px;border-radius:30px;font-size:13px;font-weight:600;box-shadow:0 4px 20px rgba(0,0,0,.2);transition:transform .3s cubic-bezier(.34,1.56,.64,1);z-index:999;white-space:nowrap;}
+.toast.show{transform:translateX(-50%) translateY(0);}
+.toast.error{background:var(--red);}
+@media print{
+  header,.steps,.form-topbar,.action-bar,#upload-panel,.tracker-bar,.tracker-table-wrap,
+  .back-btn,.select-btn,.sig-clear,#loading,.modal-overlay,.sign-banner{display:none!important;}
+  body{background:#fff;}#app{padding:0;max-width:100%;}
+  .panel{display:block!important;}#panel-table{display:none!important;}
+  .daily-form{box-shadow:none;border:1px solid #ccc;border-radius:0;}
+}
+@media(max-width:600px){
+  .form-meta,.setup-row{grid-template-columns:1fr;}
+  .meta-field{border-right:none;border-bottom:1px solid var(--border);}
+  .form-row{grid-template-columns:1fr;}
+  .row-label{border-right:none;border-bottom:1px solid var(--border);}
+  .sig-grid,.assess-grid,.export-grid{grid-template-columns:1fr 1fr;}
+  .self-assess-grid{grid-template-columns:1fr 1fr;}
+  .steps{display:none;}
+}
+</style>
+</head>
+<body>
+
+<!-- SETUP MODAL -->
+<div id="setup-modal" class="modal-overlay">
+  <div class="modal-card">
+    <h2>School &amp; Class Details</h2>
+    <p>Enter your school and class information. These will pre-fill every Daily Focus Form. Click the badge in the top-right to update at any time.</p>
+    <div class="setup-field">
+      <label>School Name</label>
+      <input type="text" id="setup-school" placeholder="e.g. Qwerzy Online School"/>
+    </div>
+    <div class="setup-row">
+      <div class="setup-field">
+        <label>Grade</label>
+        <select id="setup-grade">
+          <option value="4">Grade 4</option><option value="5">Grade 5</option>
+          <option value="6">Grade 6</option><option value="7" selected>Grade 7</option>
+          <option value="8">Grade 8</option><option value="9">Grade 9</option>
+        </select>
+      </div>
+      <div class="setup-field">
+        <label>Academic Year</label>
+        <input type="text" id="setup-year" value="2026"/>
+      </div>
+    </div>
+    <div class="setup-field">
+      <label>Teacher Name</label>
+      <input type="text" id="setup-teacher" placeholder="Full name…"/>
+    </div>
+    <button class="modal-btn" id="btn-setup-save">Continue →</button>
+  </div>
+</div>
+
+<!-- EXPORT MODAL -->
+<div id="export-modal" class="modal-overlay hidden">
+  <div class="modal-card">
+    <h2>Export Daily Focus Form</h2>
+    <p>Choose your preferred format to save or share this form.</p>
+    <div class="export-grid">
+      <button class="exp-btn" onclick="exportAs('pdf')">
+        <span class="ei">📄</span><span class="el">PDF</span><span class="es">Print-ready</span>
+      </button>
+      <button class="exp-btn" onclick="exportAs('docx')">
+        <span class="ei">📝</span><span class="el">Word / DOCX</span><span class="es">Editable document</span>
+      </button>
+      <button class="exp-btn" onclick="exportAs('xlsx')">
+        <span class="ei">📊</span><span class="el">Excel / XLSX</span><span class="es">Spreadsheet record</span>
+      </button>
+      <button class="exp-btn" onclick="exportAs('csv')">
+        <span class="ei">🟢</span><span class="el">Google Sheets</span><span class="es">CSV for import</span>
+      </button>
+    </div>
+    <button class="exp-cancel" onclick="closeExport()">Cancel</button>
+  </div>
+</div>
+
+<!-- Loading -->
+<div id="loading">
+  <div class="spinner"></div>
+  <div class="loading-msg" id="loading-msg">Reading file…</div>
+</div>
+
+<header>
+  <div class="header-logo">Q</div>
+  <div>
+    <h1>IsiZulu FAL · Daily Focus Tool</h1>
+    <p id="header-sub">CAPS ATP Tracker — aligned daily planning</p>
+  </div>
+  <div class="header-badge" id="header-badge" onclick="openSetup()" title="Click to edit school details">GRADE 7 · 2026</div>
+</header>
+
+<!-- UPLOAD -->
+<div id="upload-panel">
+  <div class="upload-card" id="drop-zone">
+    <div class="upload-icon">📋</div>
+    <h2>Upload Your ATP Tracker</h2>
+    <p>Drop your tracker file and every field on the Daily Focus Form will be prefilled automatically. The educator only needs to sign.</p>
+    <div class="fmt-strip">
+      <span class="fmt-badge fmt-xlsx">XLSX · XLS</span>
+      <span class="fmt-badge fmt-pdf">PDF</span>
+      <span class="fmt-badge fmt-docx">DOCX · DOC</span>
+    </div>
+    <p style="font-size:12px;color:#aaa;margin-top:10px;">Drag &amp; drop or click to browse</p>
+    <label class="upload-btn" for="file-input">Choose Tracker File</label>
+    <input type="file" id="file-input" accept=".xlsx,.xls,.pdf,.docx,.doc"/>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="steps">
+    <div class="step done"   id="step1"><div class="step-num">✓</div>Upload Tracker</div>
+    <div class="step active" id="step2"><div class="step-num">2</div>Select Lesson</div>
+    <div class="step"        id="step3"><div class="step-num">3</div>Review &amp; Sign</div>
+    <div class="step"        id="step4"><div class="step-num">4</div>Export</div>
+  </div>
+
+  <!-- LESSON TABLE -->
+  <div class="panel active" id="panel-table">
+    <div class="warn-banner" id="warn-banner"></div>
+    <div class="tracker-bar">
+      <div>
+        <h2>Lesson Schedule</h2>
+        <p style="font-size:13px;color:#666;margin-top:3px;">Select a lesson — the form will be fully prefilled and ready to sign</p>
+      </div>
+      <span class="lesson-count" id="lesson-count">0 lessons</span>
+      <span id="src-badge-wrap"></span>
+      <input type="text" class="tracker-search" id="search-input" placeholder="Search date or topic…"/>
+    </div>
+    <div class="tracker-table-wrap">
+      <table>
+        <thead><tr><th>Date</th><th>No.</th><th>Content / Activity</th><th>Week</th><th>Action</th></tr></thead>
+        <tbody id="tracker-body"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- DAILY FOCUS FORM -->
+  <div class="panel" id="panel-form">
+    <div class="form-topbar">
+      <button class="back-btn" id="btn-back-top">← Back to Schedule</button>
+      <h2>Daily Focus Form</h2>
+    </div>
+    <div class="daily-form">
+      <div class="form-header">
+        <h3 id="form-title">ISIZULU HL/FAL DAILY FOCUS TEMPLATE</h3>
+        <p id="form-subtitle">Grade 7 · CAPS Aligned · 2026</p>
+      </div>
+      <div style="padding:14px 20px;border-bottom:1px solid var(--border);">
+        <div class="sign-banner">✅ All fields prefilled from your ATP Tracker — scroll down to sign and export.</div>
+      </div>
+      <div class="form-meta">
+        <div class="meta-field">
+          <div class="meta-label">Igama Likathisha (Teacher)</div>
+          <input type="text" class="meta-input" id="meta-teacher" placeholder="Full name…"/>
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">Isonto (Week)</div>
+          <input type="text" class="meta-input" id="meta-week" readonly/>
+        </div>
+        <div class="meta-field">
+          <div class="meta-label">Ibanga (Grade)</div>
+          <input type="text" class="meta-input" id="meta-class" readonly/>
+        </div>
+      </div>
+      <div class="form-body">
+        <div class="form-row">
+          <div class="row-label">USUKU<small>Date</small></div>
+          <div class="row-value"><input type="text" class="row-textarea prefilled" id="f-date" style="min-height:auto;height:38px;padding:8px 12px;" readonly/></div>
+        </div>
+        <div class="form-row">
+          <div class="row-label">ISIFUNDO INOMBOLO<small>Lesson Number</small></div>
+          <div class="row-value"><input type="text" class="row-textarea prefilled" id="f-lesson-no" style="min-height:auto;height:38px;padding:8px 12px;" readonly/></div>
+        </div>
+        <div class="form-row">
+          <div class="row-label">UMBHALO OKUGXILWE KUWO<small>Text Type / Focus</small></div>
+          <div class="row-value"><textarea class="row-textarea prefilled" id="f-text-type" rows="2"></textarea></div>
+        </div>
+        <div class="form-row">
+          <div class="row-label">OKUZOFUNDWA<small>CAPS Topic / Content</small></div>
+          <div class="row-value"><textarea class="row-textarea prefilled" id="f-content" rows="3"></textarea></div>
+        </div>
+        <div class="form-row">
+          <div class="row-label">IZINSIZA KUFUNDA NOKUFUNDISA<small>Resources</small></div>
+          <div class="row-value"><textarea class="row-textarea prefilled" id="f-resources" rows="2"></textarea></div>
+        </div>
+        <div class="form-row">
+          <div class="row-label">ULIMI OLUDIDIYELWE<small>Language Structures</small></div>
+          <div class="row-value"><textarea class="row-textarea prefilled" id="f-language" rows="2"></textarea></div>
+        </div>
+        <div class="form-row" style="align-items:flex-start;">
+          <div class="row-label">
+            UKUHLOLA UMSEBENZI<small>Assessment Activities</small>
+            <div style="margin-top:10px;font-size:11px;color:#666;line-height:1.8;">• <b>Owasekilasini</b><br/>(In-class)<br/><br/>• <b>Owasekhaya</b><br/>(Homework)</div>
+          </div>
+          <div class="row-value" style="flex-direction:column;gap:10px;">
+            <div class="assess-grid">
+              <div class="assess-item">
+                <label>In-class Activity</label>
+                <textarea class="row-textarea prefilled" id="f-classwork" rows="3"></textarea>
+              </div>
+              <div class="assess-item">
+                <label>Homework</label>
+                <textarea class="row-textarea prefilled" id="f-homework" rows="3"></textarea>
+              </div>
+            </div>
+            <div>
+              <label style="font-size:11px;font-weight:600;color:#666;text-transform:uppercase;display:block;margin-bottom:4px;">Formal Assessment Task</label>
+              <textarea class="row-textarea prefilled" id="f-formal" rows="2"></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="form-row" style="align-items:flex-start;">
+          <div class="row-label">UKUZIHLOLA KUKATHISHA<small>Teacher Self-Assessment</small></div>
+          <div class="row-value" style="flex-direction:column;gap:12px;">
+            <div class="self-assess-grid">
+              <div class="sa-item"><label>Lesson Pacing</label>
+                <select class="sa-select prefilled" id="sa-pacing">
+                  <option>Too fast</option><option>Just right</option><option>Too slow</option>
+                </select>
+              </div>
+              <div class="sa-item"><label>Learner Engagement</label>
+                <select class="sa-select prefilled" id="sa-engage">
+                  <option>Low</option><option>Moderate</option><option>High</option>
+                </select>
+              </div>
+              <div class="sa-item"><label>Objectives Met</label>
+                <select class="sa-select prefilled" id="sa-objectives">
+                  <option>Fully</option><option>Partially</option><option>Not met</option>
+                </select>
+              </div>
+            </div>
+            <textarea class="row-textarea prefilled" id="f-self-reflect" rows="2"></textarea>
+          </div>
+        </div>
+      </div>
+      <!-- SIGNATURES -->
+      <div class="sig-section">
+        <div class="sig-section-title">✦ Sign-off &amp; Verification — Educator signs here</div>
+        <div class="sig-grid">
+          <div>
+            <div class="sig-block" style="margin-bottom:14px;">
+              <label>Teacher Name</label>
+              <input type="text" class="sig-line" id="sig-teacher-name" placeholder="Full name"/>
+            </div>
+            <div class="sig-block">
+              <label>Teacher Signature &amp; Date</label>
+              <div style="display:flex;gap:10px;align-items:flex-end;">
+                <div class="sig-canvas-wrap" style="flex:1;">
+                  <canvas id="teacher-sig-canvas" height="80"></canvas>
+                  <span class="sig-clear" id="clear-teacher-sig">Clear</span>
+                </div>
+                <div style="flex:0 0 120px;">
+                  <label style="font-size:10px;font-weight:700;text-transform:uppercase;color:#888;display:block;margin-bottom:4px;">Date</label>
+                  <input type="date" class="sig-line" id="sig-teacher-date"/>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="sig-block" style="margin-bottom:14px;">
+              <label>HoD / Supervisor Name</label>
+              <input type="text" class="sig-line" id="sig-hod-name" placeholder="Full name"/>
+            </div>
+            <div class="sig-block">
+              <label>Supervisor Signature &amp; Date</label>
+              <div style="display:flex;gap:10px;align-items:flex-end;">
+                <div class="sig-canvas-wrap" style="flex:1;">
+                  <canvas id="hod-sig-canvas" height="80"></canvas>
+                  <span class="sig-clear" id="clear-hod-sig">Clear</span>
+                </div>
+                <div style="flex:0 0 120px;">
+                  <label style="font-size:10px;font-weight:700;text-transform:uppercase;color:#888;display:block;margin-bottom:4px;">Date</label>
+                  <input type="date" class="sig-line" id="sig-hod-date"/>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="action-bar">
+        <button class="btn btn-outline" id="btn-back-bottom">← Change Lesson</button>
+        <button class="btn btn-gold" id="btn-export-open">⬇ Save / Export</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ─────────────────────────────────────────────
+var lessons = [];
+var schoolConfig = {school:'',grade:'7',teacher:'',year:'2026'};
+
+pdfjsLib.GlobalWorkerOptions.workerSrc =
+  'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── SETUP ─────────────────────────────────────────────
+function saveSetup(){
+  schoolConfig = {
+    school:  document.getElementById('setup-school').value.trim(),
+    grade:   document.getElementById('setup-grade').value,
+    teacher: document.getElementById('setup-teacher').value.trim(),
+    year:    document.getElementById('setup-year').value.trim() || '2026'
+  };
+  applyConfig();
+  document.getElementById('setup-modal').classList.add('hidden');
+}
+function openSetup(){
+  document.getElementById('setup-school').value  = schoolConfig.school;
+  document.getElementById('setup-grade').value   = schoolConfig.grade;
+  document.getElementById('setup-teacher').value = schoolConfig.teacher;
+  document.getElementById('setup-year').value    = schoolConfig.year;
+  document.getElementById('setup-modal').classList.remove('hidden');
+}
+function applyConfig(){
+  var s = schoolConfig;
+  document.getElementById('header-badge').textContent = 'GRADE '+s.grade+' · '+s.year;
+  document.getElementById('header-sub').textContent   = (s.school||'Qwerzy Online School')+' · CAPS ATP Tracker';
+  document.getElementById('form-subtitle').textContent= ['Grade '+s.grade,'CAPS Aligned',s.school,s.year].filter(Boolean).join(' · ');
+  if(s.teacher) document.getElementById('meta-teacher').value = s.teacher;
+  document.getElementById('meta-class').value = 'Grade '+s.grade;
+}
+
+// ── EXPORT MODAL ──────────────────────────────────────
+function openExport(){
+  document.getElementById('step4').className = 'step active';
+  document.getElementById('export-modal').classList.remove('hidden');
+}
+function closeExport(){
+  document.getElementById('export-modal').classList.add('hidden');
+}
+
+function collectForm(){
+  return {
+    teacher:        val('meta-teacher'),
+    week:           val('meta-week'),
+    grade:          val('meta-class'),
+    date:           val('f-date'),
+    lessonNo:       val('f-lesson-no'),
+    textType:       val('f-text-type'),
+    content:        val('f-content'),
+    resources:      val('f-resources'),
+    language:       val('f-language'),
+    classwork:      val('f-classwork'),
+    homework:       val('f-homework'),
+    formal:         val('f-formal'),
+    pacing:         val('sa-pacing'),
+    engagement:     val('sa-engage'),
+    objectives:     val('sa-objectives'),
+    reflection:     val('f-self-reflect'),
+    sigTeacher:     val('sig-teacher-name'),
+    sigTeacherDate: val('sig-teacher-date'),
+    sigHod:         val('sig-hod-name'),
+    sigHodDate:     val('sig-hod-date')
+  };
+}
+function val(id){ return document.getElementById(id).value || ''; }
+function nl(s)  { return (s||'').replace(/\n/g,'<br/>'); }
+
+function exportAs(fmt){
+  closeExport();
+  var d = collectForm();
+  var safe = d.date.replace(/\//g,'-');
+  var fname = 'DailyFocus_'+safe+'_'+d.lessonNo.replace('Lesson ','L');
+  if(fmt==='pdf'){
+    exportPDF(d, fname);
+  } else if(fmt==='docx'){
+    exportDOCX(d, fname);
+  } else if(fmt==='xlsx'){
+    exportXLSX(d, fname);
+  } else if(fmt==='csv'){
+    exportCSV(d, fname);
+  }
+}
+
+// ── EXPORT: PDF (new tab → Save as PDF) ──────────────
+function exportPDF(d, fname){
+  var subtitle = document.getElementById('form-subtitle').textContent;
+  var html = '<!DOCTYPE html><html><head><meta charset="UTF-8"/>'
+    +'<title>'+fname+'</title>'
+    +'<style>'
+    +'@page{margin:18mm;}body{font-family:Calibri,sans-serif;font-size:10.5pt;color:#0f1923;}'
+    +'h1{font-size:15pt;color:#1a5276;margin-bottom:3pt;}p.sub{font-size:8.5pt;color:#666;margin-bottom:10pt;}'
+    +'table{border-collapse:collapse;width:100%;margin-bottom:10pt;}'
+    +'td,th{border:1px solid #c8bfb0;padding:5pt 7pt;vertical-align:top;font-size:10pt;}'
+    +'th{background:#1a5276;color:#fff;font-weight:bold;width:160pt;text-align:left;}'
+    +'.meta td{width:33%;border:1px solid #c8bfb0;}'
+    +'h2{font-size:11pt;color:#1a5276;margin:10pt 0 4pt;}'
+    +'.sig-row td{height:52pt;vertical-align:bottom;padding-bottom:6pt;}'
+    +'</style></head><body>'
+    +'<h1>ISIZULU HL/FAL DAILY FOCUS TEMPLATE</h1>'
+    +'<p class="sub">'+subtitle+'</p>'
+    +'<table class="meta"><tr>'
+    +'<td><b>Teacher:</b><br/>'+d.teacher+'</td>'
+    +'<td><b>Week:</b><br/>'+d.week+'</td>'
+    +'<td><b>Grade:</b><br/>'+d.grade+'</td>'
+    +'</tr></table>'
+    +'<table>'
+    +'<tr><th>USUKU (Date)</th><td>'+d.date+'</td></tr>'
+    +'<tr><th>ISIFUNDO INOMBOLO</th><td>'+d.lessonNo+'</td></tr>'
+    +'<tr><th>UMBHALO OKUGXILWE KUWO</th><td>'+nl(d.textType)+'</td></tr>'
+    +'<tr><th>OKUZOFUNDWA — Content</th><td>'+nl(d.content)+'</td></tr>'
+    +'<tr><th>IZINSIZA (Resources)</th><td>'+nl(d.resources)+'</td></tr>'
+    +'<tr><th>ULIMI OLUDIDIYELWE</th><td>'+nl(d.language)+'</td></tr>'
+    +'<tr><th>In-class Activity</th><td>'+nl(d.classwork)+'</td></tr>'
+    +'<tr><th>Homework</th><td>'+nl(d.homework)+'</td></tr>'
+    +'<tr><th>Formal Assessment Task</th><td>'+nl(d.formal)+'</td></tr>'
+    +'<tr><th>Lesson Pacing</th><td>'+d.pacing+'</td></tr>'
+    +'<tr><th>Learner Engagement</th><td>'+d.engagement+'</td></tr>'
+    +'<tr><th>Objectives Met</th><td>'+d.objectives+'</td></tr>'
+    +'<tr><th>Reflection</th><td>'+nl(d.reflection)+'</td></tr>'
+    +'</table>'
+    +'<h2>Sign-off &amp; Verification</h2>'
+    +'<table><tr class="sig-row">'
+    +'<td><b>Teacher:</b> '+d.sigTeacher+'<br/><br/>Signature: _______________________&nbsp;&nbsp; Date: '+d.sigTeacherDate+'</td>'
+    +'<td><b>HoD / Supervisor:</b> '+d.sigHod+'<br/><br/>Signature: _______________________&nbsp;&nbsp; Date: '+d.sigHodDate+'</td>'
+    +'</tr></table>'
+    +'<script>window.onload=function(){window.print();}<\/script>'
+    +'</body></html>';
+  var blob = new Blob([html],{type:'text/html'});
+  var reader = new FileReader();
+  reader.onloadend = function(){
+    var w = window.open('','_blank');
+    if(w){ w.document.open(); w.document.write(html); w.document.close(); }
+    else { toast('Please allow pop-ups for this site to export PDF', true); }
+  };
+  reader.readAsDataURL(blob);
+  toast('PDF opening in new tab — press Ctrl+P / Cmd+P then Save as PDF');
+}
+
+// ── EXPORT: WORD (.doc via HTML) ──────────────────────
+function exportDOCX(d, fname){
+  var subtitle = document.getElementById('form-subtitle').textContent;
+  var html = '<!DOCTYPE html><html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">'
+    +'<head><meta charset="UTF-8"/><style>'
+    +'body{font-family:Calibri,sans-serif;font-size:11pt;color:#0f1923;}'
+    +'h1{font-size:16pt;color:#1a5276;}h2{font-size:13pt;color:#1a5276;margin-top:14pt;}'
+    +'table{border-collapse:collapse;width:100%;margin-bottom:12pt;}'
+    +'td,th{border:1px solid #c8bfb0;padding:6pt 8pt;vertical-align:top;font-size:10.5pt;}'
+    +'th{background:#1a5276;color:#fff;font-weight:bold;width:170pt;text-align:left;}'
+    +'</style></head><body>'
+    +'<h1>ISIZULU HL/FAL DAILY FOCUS TEMPLATE</h1>'
+    +'<p style="color:#666;font-size:9pt;">'+subtitle+'</p>'
+    +'<table><tr><td><b>Teacher:</b> '+d.teacher+'</td><td><b>Week:</b> '+d.week+'</td><td><b>Grade:</b> '+d.grade+'</td></tr></table>'
+    +'<table>'
+    +'<tr><th>USUKU (Date)</th><td>'+d.date+'</td></tr>'
+    +'<tr><th>ISIFUNDO INOMBOLO (Lesson No.)</th><td>'+d.lessonNo+'</td></tr>'
+    +'<tr><th>UMBHALO OKUGXILWE KUWO (Text Type)</th><td>'+nl(d.textType)+'</td></tr>'
+    +'<tr><th>OKUZOFUNDWA — Content</th><td>'+nl(d.content)+'</td></tr>'
+    +'<tr><th>IZINSIZA (Resources)</th><td>'+nl(d.resources)+'</td></tr>'
+    +'<tr><th>ULIMI OLUDIDIYELWE (Language)</th><td>'+nl(d.language)+'</td></tr>'
+    +'<tr><th>In-class Activity</th><td>'+nl(d.classwork)+'</td></tr>'
+    +'<tr><th>Homework</th><td>'+nl(d.homework)+'</td></tr>'
+    +'<tr><th>Formal Assessment Task</th><td>'+nl(d.formal)+'</td></tr>'
+    +'<tr><th>Lesson Pacing</th><td>'+d.pacing+'</td></tr>'
+    +'<tr><th>Learner Engagement</th><td>'+d.engagement+'</td></tr>'
+    +'<tr><th>Objectives Met</th><td>'+d.objectives+'</td></tr>'
+    +'<tr><th>Reflection</th><td>'+nl(d.reflection)+'</td></tr>'
+    +'</table>'
+    +'<h2>Sign-off &amp; Verification</h2>'
+    +'<table><tr>'
+    +'<td><b>Teacher:</b> '+d.sigTeacher+'<br/><br/>Signature: ____________________________&nbsp;&nbsp; <b>Date:</b> '+d.sigTeacherDate+'</td>'
+    +'<td><b>HoD / Supervisor:</b> '+d.sigHod+'<br/><br/>Signature: ____________________________&nbsp;&nbsp; <b>Date:</b> '+d.sigHodDate+'</td>'
+    +'</tr></table>'
+    +'</body></html>';
+  dlBlob(new Blob([html],{type:'application/msword'}), fname+'.doc');
+  toast('✓ Word document downloaded');
+}
+
+// ── EXPORT: XLSX ──────────────────────────────────────
+function exportXLSX(d, fname){
+  var subtitle = document.getElementById('form-subtitle').textContent;
+  var rows = [
+    ['ISIZULU HL/FAL DAILY FOCUS FORM',''],
+    [subtitle,''],
+    ['',''],
+    ['Teacher', d.teacher],
+    ['Week',    d.week],
+    ['Grade',   d.grade],
+    ['',''],
+    ['Field','Value'],
+    ['Date',                  d.date],
+    ['Lesson Number',         d.lessonNo],
+    ['Text Type / Focus',     d.textType],
+    ['CAPS Topic / Content',  d.content],
+    ['Resources',             d.resources],
+    ['Language Structures',   d.language],
+    ['In-class Activity',     d.classwork],
+    ['Homework',              d.homework],
+    ['Formal Assessment Task',d.formal],
+    ['Lesson Pacing',         d.pacing],
+    ['Learner Engagement',    d.engagement],
+    ['Objectives Met',        d.objectives],
+    ['Teacher Reflection',    d.reflection],
+    ['',''],
+    ['SIGN-OFF',''],
+    ['Teacher Name',    d.sigTeacher + '    Date: '+d.sigTeacherDate],
+    ['HoD / Supervisor',d.sigHod    + '    Date: '+d.sigHodDate]
+  ];
+  var ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:30},{wch:64}];
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Daily Focus');
+  XLSX.writeFile(wb, fname+'.xlsx');
+  toast('✓ Excel file downloaded');
+}
+
+// ── EXPORT: CSV (Google Sheets) ───────────────────────
+function exportCSV(d, fname){
+  var rows = [
+    ['Field','Value'],
+    ['School',       schoolConfig.school],
+    ['Teacher',      d.teacher],
+    ['Week',         d.week],
+    ['Grade',        d.grade],
+    ['Date',         d.date],
+    ['Lesson Number',d.lessonNo],
+    ['Text Type',    d.textType],
+    ['Content',      d.content],
+    ['Resources',    d.resources],
+    ['Language',     d.language],
+    ['In-class Activity', d.classwork],
+    ['Homework',     d.homework],
+    ['Formal Assessment Task', d.formal],
+    ['Lesson Pacing',d.pacing],
+    ['Learner Engagement', d.engagement],
+    ['Objectives Met', d.objectives],
+    ['Reflection',   d.reflection],
+    ['Teacher Sign-off', d.sigTeacher],
+    ['Teacher Date', d.sigTeacherDate],
+    ['HoD Name',     d.sigHod],
+    ['HoD Date',     d.sigHodDate]
+  ];
+  var csv = rows.map(function(r){
+    return r.map(function(c){ return '"'+String(c||'').replace(/"/g,'""')+'"'; }).join(',');
+  }).join('\r\n');
+  dlBlob(new Blob([csv],{type:'text/csv;charset=utf-8;'}), fname+'.csv');
+  toast('✓ CSV downloaded — open in Google Sheets via File → Import');
+}
+
+// ── DOWNLOAD HELPER ───────────────────────────────────
+function dlBlob(blob, filename){
+  var reader = new FileReader();
+  reader.onloadend = function(){
+    var a = document.createElement('a');
+    a.href = reader.result;
+    a.download = filename;
+    a.style.display = 'none';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function(){ document.body.removeChild(a); }, 500);
+  };
+  reader.readAsDataURL(blob);
+}
+
+// ── UPLOAD / DROP (wired in DOMContentLoaded) ─────────
+
+
+async function handleFile(file){
+  var name = file.name.toLowerCase();
+  showLoading('Reading file…');
+  try{
+    if(name.endsWith('.xlsx')||name.endsWith('.xls')) await parseXLSX(file);
+    else if(name.endsWith('.pdf'))                    await parsePDF(file);
+    else if(name.endsWith('.docx')||name.endsWith('.doc')) await parseDOCX(file);
+    else throw new Error('Unsupported file type.');
+    if(lessons.length===0) showWarn('⚠️ No lesson rows detected. Check your file matches the ATP tracker format.');
+    hideLoading();
+    showApp(name);
+    toast('✓ '+lessons.length+' lessons loaded from '+file.name);
+  }catch(err){ hideLoading(); toast('Error: '+err.message, true); }
+}
+
+// ── PARSERS ───────────────────────────────────────────
+function parseXLSX(file){
+  return new Promise(function(resolve,reject){
+    var reader = new FileReader();
+    reader.onload = function(e){
+      try{
+        var wb   = XLSX.read(e.target.result,{type:'binary',cellDates:true});
+        var ws   = wb.Sheets[wb.SheetNames[0]];
+        var rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+        lessons  = extractFromRows(rows,'xlsx');
+        renderTable(lessons); resolve();
+      }catch(err){ reject(err); }
+    };
+    reader.onerror = function(){ reject(new Error('Could not read file.')); };
+    reader.readAsBinaryString(file);
+  });
+}
+async function parsePDF(file){
+  setLoadingMsg('Extracting text from PDF…');
+  var buf = await file.arrayBuffer();
+  var pdf = await pdfjsLib.getDocument({data:buf}).promise;
+  var allLines = [];
+  for(var p=1;p<=pdf.numPages;p++){
+    var page    = await pdf.getPage(p);
+    var content = await page.getTextContent();
+    var vp      = page.getViewport({scale:1});
+    var buckets = {};
+    for(var item of content.items){
+      if(!item.str.trim()) continue;
+      var y = Math.round(vp.height - item.transform[5]);
+      var b = Math.round(y/5)*5;
+      if(!buckets[b]) buckets[b]=[];
+      buckets[b].push({x:item.transform[4],text:item.str});
+    }
+    Object.keys(buckets).sort(function(a,b){return a-b;}).forEach(function(k){
+      var line = buckets[k].sort(function(a,b){return a.x-b.x;}).map(function(i){return i.text;}).join(' ').trim();
+      if(line) allLines.push(line);
+    });
+  }
+  lessons = extractFromText(allLines,'pdf'); renderTable(lessons);
+}
+async function parseDOCX(file){
+  setLoadingMsg('Extracting text from Word document…');
+  var buf    = await file.arrayBuffer();
+  var result = await mammoth.extractRawText({arrayBuffer:buf});
+  var lines  = result.value.split('\n').map(function(l){return l.trim();}).filter(Boolean);
+  lessons = extractFromText(lines,'docx'); renderTable(lessons);
+}
+
+// ── EXTRACTION ────────────────────────────────────────
+function extractFromRows(rows,src){
+  var out=[],weekLabel='',weekNum=0;
+  for(var row of rows){
+    var c0=String(row[0]||'').trim(),c1=String(row[1]||'').trim(),c2=String(row[2]||'').trim();
+    if(/week|isonto/i.test(c0)&&c0.length>10&&!isLessonNo(c1)){weekLabel=c0;weekNum++;continue;}
+    var dateStr='';
+    if(row[0] instanceof Date) dateStr=fmtDate(row[0]);
+    else if(looksLikeDate(c0)) dateStr=c0;
+    else if(/^\d{5}$/.test(c0)) dateStr=excelSerial(Number(c0));
+    if(dateStr&&isLessonNo(c1)&&c2.length>8){out.push(mkLesson(dateStr,c1,c2,weekLabel||'Week '+(weekNum||1),weekNum||1,src));continue;}
+    for(var o=0;o<=2;o++){
+      var d=String(row[o]||'').trim(),n=String(row[o+1]||'').trim(),c=String(row[o+2]||'').trim();
+      if(looksLikeDate(d)&&isLessonNo(n)&&c.length>8){out.push(mkLesson(d,n,c,weekLabel||'Week '+(weekNum||1),weekNum||1,src));break;}
+    }
+  }
+  return out;
+}
+function extractFromText(lines,src){
+  var out=[],weekLabel='',weekNum=0;
+  for(var i=0;i<lines.length;i++){
+    var line=lines[i].trim(); if(!line) continue;
+    if(/isonto|week\s*\d/i.test(line)&&line.length>8){weekLabel=line;weekNum++;continue;}
+    var packed=line.match(/^(\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4})\s+(\d{1,3})\s+(.{10,})/);
+    if(packed){out.push(mkLesson(packed[1],packed[2],packed[3].trim(),weekLabel||'Week '+(weekNum||1),weekNum||1,src));continue;}
+    if(looksLikeDate(line)){
+      var n1=(lines[i+1]||'').trim(),n2=(lines[i+2]||'').trim();
+      if(isLessonNo(n1)&&n2.length>8){out.push(mkLesson(line,n1,n2,weekLabel||'Week '+(weekNum||1),weekNum||1,src));i+=2;continue;}
+      if(n1.length>10&&!isLessonNo(n1)){out.push(mkLesson(line,String(out.length+1),n1,weekLabel||'Week '+(weekNum||1),weekNum||1,src));i+=1;continue;}
+    }
+  }
+  return out;
+}
+
+// ── LESSON BUILDER ────────────────────────────────────
+function mkLesson(date,lessonNo,content,week,weekNum,src){
+  content=content.trim();
+  return {date:date,lessonNo:lessonNo,content:content,week:week,weekNum:weekNum,src:src,
+          textType:deriveTextType(content),language:deriveLanguage(content),
+          resources:deriveResources(content),classwork:deriveClasswork(content),
+          homework:deriveHomework(content),formal:deriveFormal(content),
+          pacing:'Just right',engagement:'Moderate',objectives:'Fully',
+          reflection:deriveReflection(content)};
+}
+
+// ── DERIVATION FUNCTIONS ──────────────────────────────
+function deriveTextType(c){
+  var l=c.toLowerCase();
+  if(/inoveli|novel/.test(l))                return 'Umbhalo wobuciko: Inoveli (Novel)';
+  if(/inkondlo|poetry/.test(l))              return 'Umbhalo wobuciko: Inkondlo (Poetry)';
+  if(/indaba emfishane|short story/.test(l)) return 'Umbhalo wobuciko: Indaba Emfishane (Short Story)';
+  if(/iphephandaba|newspaper/.test(l))       return 'Umbhalo wolwazi: Iphephandaba (Newspaper article)';
+  if(/ikhathuni|cartoon/.test(l))            return 'Umbhalo obukwayo: Ikhathuni (Visual text / Cartoon)';
+  if(/incwadi|letter/.test(l))               return 'Imibhalo edlulisa umyalezo: Incwadi (Letter)';
+  if(/eseyi|essay/.test(l))                  return 'Ukubhala: I-Eseyi';
+  if(/baseline|diagnostic|remediat/.test(l)) return 'Ukuhlolwa okuqalisayo (Baseline / Diagnostic)';
+  if(/revision|buyekeza/.test(l))            return 'Ukubuyekeza (Revision)';
+  if(/isivivinyo|test|formal/.test(l))       return 'Ukuhlola okuhlelekile (Formal Assessment)';
+  if(/ukulalela|listening/.test(l))          return 'Ukulalela Nokukhuluma (Listening & Speaking)';
+  if(/ukufunda|reading/.test(l))             return 'Ukufunda Nokubukwa (Reading & Viewing)';
+  if(/ukubhala|writing/.test(l))             return 'Ukubhala Nokwethula (Writing & Presenting)';
+  return 'Faka uhlobo lombhalo (Enter text type)';
+}
+function deriveLanguage(c){
+  var l=c.toLowerCase(),t=[];
+  if(/ubunye|ubuningi/.test(l))        t.push('Ubunye nobuningi (Singular & Plural)');
+  if(/izichasiso/.test(l))             t.push('Izichasiso (Adjectives)');
+  if(/izikhuliso/.test(l))             t.push('Izikhuliso (Diminutives)');
+  if(/izenzo|verb/.test(l))            t.push('Izenzo (Verbs)');
+  if(/isabizwana/.test(l))             t.push('Izabizwana (Pronouns)');
+  if(/inkathi/.test(l))                t.push('Inkathi (Tense)');
+  if(/omqondofana/.test(l))            t.push('Omqondofana (Synonyms)');
+  if(/omqondophika|aphikisan/.test(l)) t.push('Omqondophika (Antonyms)');
+  if(/izisho|izaga/.test(l))           t.push('Izisho nezaga (Idioms & Proverbs)');
+  if(/isifengqo|izifengqo/.test(l))    t.push('Izifengqo (Figures of speech)');
+  if(/isiqalo|isijobelelo/.test(l))    t.push('Isiqalo, isijobelelo (Prefix / Suffix)');
+  if(t.length===0) t.push('Izakhiwo nezimiso zolimi (Language structures & conventions)');
+  return t.join('\n');
+}
+function deriveResources(c){
+  var l=c.toLowerCase();
+  var res=['DBE Workbook (IsiZulu FAL Grade '+schoolConfig.grade+')'];
+  if(/novel|inoveli/.test(l))          res.push('Prescribed novel / Inoveli ebhaliwe');
+  if(/poetry|inkondlo/.test(l))        res.push('Poetry anthology / Incwadi yezinkondlo');
+  if(/newspaper|iphephandaba/.test(l)) res.push('Newspaper article / Iphephandaba');
+  if(/cartoon|ikhathuni/.test(l))      res.push('Visual text / Isithombe');
+  if(/letter|incwadi/.test(l))         res.push('Letter template / Isifanekiso sencwadi');
+  if(/essay|eseyi/.test(l))            res.push('Writing frame / Isakhiwo sokubhala');
+  if(/test|isivivinyo|formal/.test(l)) res.push('Assessment rubric / Irejista lokuhlola');
+  res.push('Sasol Inzalo Reader · Whiteboard · Markers');
+  return res.join('\n');
+}
+function deriveClasswork(c){
+  var l=c.toLowerCase();
+  if(/baseline|diagnostic/.test(l))    return 'Baseline assessment — learners complete diagnostic tasks independently to establish prior knowledge.';
+  if(/revision|buyekeza/.test(l))       return 'Revision activity — learners revisit and consolidate prior learning through guided exercises and group discussion.';
+  if(/isivivinyo|test|formal/.test(l))  return 'Formal Assessment Task — learners complete the formal assessment under test conditions.';
+  if(/ukulalela|listening/.test(l))     return 'Listening activity — teacher reads aloud a prepared text. Learners answer comprehension questions orally and in writing.';
+  if(/ukufunda|reading/.test(l))        return 'Shared reading activity — learners read the set text independently, then discuss main ideas and vocabulary in pairs.';
+  if(/ukubhala|writing/.test(l))        return 'Guided writing activity — learners draft a structured piece based on the lesson topic using the writing frame provided.';
+  if(/eseyi|essay/.test(l))             return 'Essay writing activity — learners plan and draft their essay in class using the approved writing frame and topic.';
+  if(/incwadi|letter/.test(l))          return 'Letter writing activity — learners draft a formal/informal letter following the correct format taught in class.';
+  if(/inkondlo|poetry/.test(l))         return 'Poetry analysis — learners identify poetic devices, discuss mood and theme, then respond in written form.';
+  if(/inoveli|novel/.test(l))           return 'Novel study — learners read the set chapter(s), summarise key events and discuss character development.';
+  return 'Learners engage with the lesson content through a structured class activity aligned to the CAPS topic. Teacher facilitates discussion and monitors understanding.';
+}
+function deriveHomework(c){
+  var l=c.toLowerCase();
+  if(/baseline|diagnostic/.test(l))    return 'None — baseline lesson.';
+  if(/isivivinyo|test|formal/.test(l)) return 'None — formal assessment day.';
+  if(/revision|buyekeza/.test(l))       return 'Complete the revision worksheet for today\'s topics. Bring corrections to the next lesson.';
+  if(/ukulalela|listening/.test(l))     return 'Listen to a radio broadcast or podcast in isiZulu (10–15 min). Write five sentences summarising what you heard.';
+  if(/ukufunda|reading/.test(l))        return 'Read the next section of the set text. Write a 5–8 sentence summary and note five new vocabulary words with meanings.';
+  if(/eseyi|essay/.test(l))             return 'Complete the essay draft started in class. Final essay due next lesson. Minimum 200 words.';
+  if(/incwadi|letter/.test(l))          return 'Write a final clean copy of the letter practised in class. Follow correct format and check spelling.';
+  if(/inkondlo|poetry/.test(l))         return 'Learn the set poem by heart. Write a short paragraph explaining the theme in your own words.';
+  if(/inoveli|novel/.test(l))           return 'Read the next assigned chapter. Prepare a brief oral summary for the next lesson.';
+  if(/ukubhala|writing/.test(l))        return 'Complete the writing activity started in class. Bring the completed draft to the next lesson for peer review.';
+  return 'Complete any unfinished classwork. Review today\'s lesson notes and vocabulary. Read ahead in the DBE Workbook.';
+}
+function deriveFormal(c){
+  var l=c.toLowerCase();
+  if(/task\s*1|taak\s*1/.test(l))         return 'Task 1 — '+c.trim();
+  if(/task\s*2|taak\s*2/.test(l))         return 'Task 2 — '+c.trim();
+  if(/task\s*3|taak\s*3/.test(l))         return 'Task 3 — '+c.trim();
+  if(/task\s*4|taak\s*4/.test(l))         return 'Task 4 — '+c.trim();
+  if(/isivivinyo|formal test/.test(l))    return 'Formal Test — '+c.trim();
+  if(/oral|ukulalela|ukuphendula/.test(l))return 'Oral Assessment — '+c.trim();
+  if(/essay|eseyi/.test(l))               return 'Written Task — Essay ('+c.trim()+')';
+  if(/baseline|diagnostic/.test(l))       return 'Baseline / Diagnostic Assessment — not recorded as a formal mark.';
+  return 'None this lesson — no formal assessment task.';
+}
+function deriveReflection(c){
+  var l=c.toLowerCase();
+  if(/baseline|diagnostic/.test(l))    return 'Baseline results will inform grouping and intervention planning for subsequent lessons.';
+  if(/revision|buyekeza/.test(l))       return 'Monitor which topics required the most revision. Identify learners needing additional support before the next assessment.';
+  if(/isivivinyo|test|formal/.test(l)) return 'Mark and record assessment. Note common errors for whole-class feedback in the next lesson.';
+  if(/ukulalela|listening/.test(l))     return 'Check comprehension responses. Note learners who struggled — consider paired listening activities next time.';
+  if(/inkondlo|poetry/.test(l))         return 'Note learner responses to poetic devices. Consolidate any figures of speech that caused confusion.';
+  if(/eseyi|essay/.test(l))             return 'Review essay plans/drafts for structure and coherence. Provide written feedback before final submission.';
+  return 'Observe learner participation and comprehension. Adjust pacing or grouping in the next lesson if objectives were not fully met.';
+}
+
+// ── RENDER TABLE ──────────────────────────────────────
+var SRC_HTML = {
+  xlsx:'<span class="src-badge src-xlsx">XLSX</span>',
+  pdf: '<span class="src-badge src-pdf">PDF</span>',
+  docx:'<span class="src-badge src-docx">DOCX</span>'
+};
+function renderTable(data){
+  var tbody = document.getElementById('tracker-body');
+  tbody.innerHTML = '';
+  document.getElementById('lesson-count').textContent = data.length+' lessons';
+  var lastWeek = '';
+  data.forEach(function(l,idx){
+    if(l.week!==lastWeek){
+      var wr=document.createElement('tr'); wr.className='week-hdr';
+      wr.innerHTML='<td colspan="5">📅 '+l.week+'</td>';
+      tbody.appendChild(wr); lastWeek=l.week;
+    }
+    var tr=document.createElement('tr');
+    tr.innerHTML='<td class="date-col">'+l.date+'</td>'
+      +'<td class="lesson-col">'+l.lessonNo+'</td>'
+      +'<td>'+l.content+'</td>'
+      +'<td style="font-size:12px;color:#888;white-space:nowrap;">Wk '+l.weekNum+'</td>'
+      +'<td><button class="select-btn" onclick="openForm('+idx+')">Open Form →</button></td>';
+    tbody.appendChild(tr);
+  });
+}
+// ── SEARCH (wired in DOMContentLoaded) ───────────────
+
+
+// ── OPEN FORM ─────────────────────────────────────────
+function openForm(idx){
+  var l=lessons[idx];
+  document.getElementById('f-date').value        = l.date;
+  document.getElementById('f-lesson-no').value   = 'Lesson '+l.lessonNo;
+  document.getElementById('f-text-type').value   = l.textType;
+  document.getElementById('f-content').value     = l.content;
+  document.getElementById('f-language').value    = l.language;
+  document.getElementById('f-resources').value   = l.resources;
+  document.getElementById('f-classwork').value   = l.classwork;
+  document.getElementById('f-homework').value    = l.homework;
+  document.getElementById('f-formal').value      = l.formal;
+  document.getElementById('f-self-reflect').value= l.reflection;
+  document.getElementById('meta-week').value     = l.week;
+  setSelect('sa-pacing',    l.pacing);
+  setSelect('sa-engage',    l.engagement);
+  setSelect('sa-objectives',l.objectives);
+  var s=schoolConfig;
+  if(s.teacher) document.getElementById('meta-teacher').value    = s.teacher;
+  document.getElementById('meta-class').value      = 'Grade '+s.grade;
+  document.getElementById('sig-teacher-name').value= s.teacher||'';
+  var today=new Date();
+  document.getElementById('sig-teacher-date').value=
+    today.getFullYear()+'-'+String(today.getMonth()+1).padStart(2,'0')+'-'+String(today.getDate()).padStart(2,'0');
+  clearCanvas('teacher-sig-canvas');
+  clearCanvas('hod-sig-canvas');
+  document.getElementById('step2').className='step done';
+  document.getElementById('step3').className='step active';
+  document.getElementById('panel-table').classList.remove('active');
+  document.getElementById('panel-form').classList.add('active');
+  setTimeout(function(){
+    document.querySelector('.sig-section').scrollIntoView({behavior:'smooth',block:'start'});
+  },150);
+}
+function setSelect(id,val){
+  var sel=document.getElementById(id);
+  for(var i=0;i<sel.options.length;i++){
+    if(sel.options[i].text===val){sel.selectedIndex=i;return;}
+  }
+}
+
+// ── NAVIGATION ────────────────────────────────────────
+function showTable(){
+  document.getElementById('panel-form').classList.remove('active');
+  document.getElementById('panel-table').classList.add('active');
+  document.getElementById('step3').className='step';
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function showApp(filename){
+  document.getElementById('upload-panel').style.display='none';
+  document.getElementById('app').style.display='block';
+  var ext=filename.endsWith('.pdf')?'pdf':(filename.endsWith('.docx')||filename.endsWith('.doc'))?'docx':'xlsx';
+  document.getElementById('src-badge-wrap').innerHTML=SRC_HTML[ext]||'';
+}
+
+// ── LOADING ───────────────────────────────────────────
+function showLoading(msg){ document.getElementById('loading-msg').textContent=msg; document.getElementById('loading').classList.add('show'); }
+function setLoadingMsg(m){ document.getElementById('loading-msg').textContent=m; }
+function hideLoading(){    document.getElementById('loading').classList.remove('show'); }
+function showWarn(msg){    var b=document.getElementById('warn-banner'); b.textContent=msg; b.classList.add('show'); }
+
+// ── DATE HELPERS ──────────────────────────────────────
+function looksLikeDate(s){ return /^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(s.trim()); }
+function isLessonNo(s){    return /^\d{1,3}$/.test(s.trim()); }
+function fmtDate(d){       return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); }
+function excelSerial(n){   var d=XLSX.SSF.parse_date_code(n); return d?String(d.d).padStart(2,'0')+'/'+String(d.m).padStart(2,'0')+'/'+d.y:String(n); }
+
+// ── SIGNATURE CANVASES ────────────────────────────────
+function initCanvas(id){
+  var canvas=document.getElementById(id),ctx=canvas.getContext('2d');
+  var drawing=false,lx=0,ly=0;
+  function resize(){ canvas.width=canvas.parentElement.offsetWidth||300; canvas.height=80; }
+  resize();
+  ctx.strokeStyle='#0f1923'; ctx.lineWidth=1.8; ctx.lineCap='round'; ctx.lineJoin='round';
+  function pt(e){ var r=canvas.getBoundingClientRect(),sx=canvas.width/r.width,sy=canvas.height/r.height,s=e.touches?e.touches[0]:e; return{x:(s.clientX-r.left)*sx,y:(s.clientY-r.top)*sy}; }
+  canvas.addEventListener('mousedown',  function(e){ drawing=true; var p=pt(e); lx=p.x; ly=p.y; });
+  canvas.addEventListener('mousemove',  function(e){ if(!drawing)return; var p=pt(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(p.x,p.y); ctx.stroke(); lx=p.x; ly=p.y; });
+  canvas.addEventListener('mouseup',    function(){ drawing=false; });
+  canvas.addEventListener('mouseleave', function(){ drawing=false; });
+  canvas.addEventListener('touchstart', function(e){ e.preventDefault(); drawing=true; var p=pt(e); lx=p.x; ly=p.y; },{passive:false});
+  canvas.addEventListener('touchmove',  function(e){ e.preventDefault(); if(!drawing)return; var p=pt(e); ctx.beginPath(); ctx.moveTo(lx,ly); ctx.lineTo(p.x,p.y); ctx.stroke(); lx=p.x; ly=p.y; },{passive:false});
+  canvas.addEventListener('touchend',   function(){ drawing=false; });
+}
+function clearCanvas(id){ var c=document.getElementById(id); c.getContext('2d').clearRect(0,0,c.width,c.height); }
+function on(id, evt, fn){
+  var el = document.getElementById(id);
+  if(el) el.addEventListener(evt, fn);
+}
+
+document.addEventListener('DOMContentLoaded', function(){
+  // Setup modal
+  on('btn-setup-save',   'click', saveSetup);
+  on('header-badge',     'click', openSetup);
+
+  // Export modal
+  on('btn-export-open',   'click', openExport);
+  on('btn-export-cancel', 'click', closeExport);
+  on('exp-pdf',  'click', function(){ exportAs('pdf');  });
+  on('exp-docx', 'click', function(){ exportAs('docx'); });
+  on('exp-xlsx', 'click', function(){ exportAs('xlsx'); });
+  on('exp-csv',  'click', function(){ exportAs('csv');  });
+
+  // Navigation
+  on('btn-back-top',    'click', showTable);
+  on('btn-back-bottom', 'click', showTable);
+
+  // Signature clear buttons
+  on('clear-teacher-sig', 'click', function(){ clearCanvas('teacher-sig-canvas'); });
+  on('clear-hod-sig',     'click', function(){ clearCanvas('hod-sig-canvas'); });
+
+  // File upload
+  var dz = document.getElementById('drop-zone');
+  var fi = document.getElementById('file-input');
+  if(dz){
+    dz.addEventListener('dragover',  function(e){ e.preventDefault(); dz.classList.add('drag-over'); });
+    dz.addEventListener('dragleave', function(){ dz.classList.remove('drag-over'); });
+    dz.addEventListener('drop', function(e){ e.preventDefault(); dz.classList.remove('drag-over'); if(e.dataTransfer.files[0]) handleFile(e.dataTransfer.files[0]); });
+  }
+  if(fi) fi.addEventListener('change', function(e){ if(e.target.files[0]) handleFile(e.target.files[0]); });
+
+  // Search
+  on('search-input', 'input', function(){
+    var q = this.value.toLowerCase();
+    renderTable(lessons.filter(function(l){
+      return l.date.toLowerCase().includes(q) || l.content.toLowerCase().includes(q) || String(l.lessonNo).includes(q);
+    }));
+  });
+
+  // Canvases
+  initCanvas('teacher-sig-canvas');
+  initCanvas('hod-sig-canvas');
+});
+
+// ── TOAST ─────────────────────────────────────────────
+function toast(msg,isErr){
+  var t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast'+(isErr?' error':'');
+  t.classList.add('show');
+  setTimeout(function(){ t.classList.remove('show'); },3500);
+}
+</script>
+</body>
+</html>
